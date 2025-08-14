@@ -8,10 +8,11 @@ function App() {
     email: "",
     loanAmount: "",
     phone: "",
+    loanType: "",
   });
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/interest-rates")
+    fetch(`${process.env.REACT_APP_API_URL}/api/interest-rates`)
       .then((res) => res.json())
       .then((data) => setRates(data))
       .catch((err) => console.error("Error fetching rates:", err));
@@ -23,7 +24,7 @@ function App() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    fetch("http://localhost:5000/api/borrower", {
+    fetch(`${process.env.REACT_APP_API_URL}/api/borrower`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(formData),
@@ -36,22 +37,30 @@ function App() {
   return (
     <div className="container">
       <header className="header">
-        <h1>Loan Rates</h1>
+        <h1>Sak Lending</h1>
+        <p>Your Trusted Partner for Commercial Loans in Massachusetts</p>
       </header>
       <main className="main">
+        <section className="intro-section">
+          <h2>Welcome to Sak Lending</h2>
+          <p>
+            Secure competitive commercial loan rates with expert guidance tailored
+            for your business needs in Massachusetts.
+          </p>
+        </section>
         <section className="rates-section">
-          <h2>Current Interest Rates</h2>
+          <h2>Current Commercial Loan Rates</h2>
           <div className="rates-grid">
             {rates.map((rate, index) => (
               <div key={index} className="rate-card">
                 <h3>{rate.type}</h3>
-                <p>{rate.rate}%</p>
+                <p>{rate.rate}% APR</p>
               </div>
             ))}
           </div>
         </section>
         <section className="form-section">
-          <h2>Borrower Information</h2>
+          <h2>Request a Quote</h2>
           <form onSubmit={handleSubmit} className="form">
             <div className="form-group">
               <label>Name</label>
@@ -92,12 +101,27 @@ function App() {
                 onChange={handleChange}
               />
             </div>
-            <button type="submit">Submit</button>
+            <div className="form-group">
+              <label>Loan Type</label>
+              <select
+                name="loanType"
+                value={formData.loanType}
+                onChange={handleChange}
+                required
+              >
+                <option value="">Select Loan Type</option>
+                <option value="Commercial Mortgage">Commercial Mortgage</option>
+                <option value="Bridge Loan">Bridge Loan</option>
+                <option value="Construction Loan">Construction Loan</option>
+              </select>
+            </div>
+            <button type="submit">Get a Quote</button>
           </form>
         </section>
       </main>
       <footer className="footer">
-        <p>&copy; 2025 Loan Rates. All rights reserved.</p>
+        <p>&copy; 2025 Sak Lending. All rights reserved.</p>
+        <p>Contact: info@saklending.com | (617) 555-1234</p>
       </footer>
     </div>
   );
