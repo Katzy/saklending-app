@@ -167,133 +167,105 @@ function App() {
   };
 
   useEffect(() => {
-    const fetchRates = async () => {
+  const series = [
+    { id: "DPRIME", name: "PRIME RATE" },
+    { id: "SOFR", name: "SOFR" },
+    { id: "SOFRTERM1M", name: "1 MO TERM SOFR", placeholder: true },
+    { id: "SOFRTERM6M", name: "6 MO TERM SOFR", placeholder: true },
+    { id: "SOFR30DAYAVG", name: "30 DAY AVG SOFR" },
+    { id: "SOFRSWAP5YR", name: "5 YR ANN SWAP SOFR", placeholder: true },
+    { id: "SOFRSWAP7YR", name: "7 YR ANN SWAP SOFR", placeholder: true },
+    { id: "SOFRSWAP10YR", name: "10 YR ANN SWAP SOFR", placeholder: true },
+    { id: "DGS3", name: "3 YR TREASURY" },
+    { id: "DGS5", name: "5 YR TREASURY" },
+    { id: "DGS7", name: "7 YR TREASURY" },
+    { id: "DGS10", name: "10 YR TREASURY" },
+    { id: "DGS30", name: "30 YR TREASURY" },
+    { id: "DGS1", name: "1 YR CMT" },
+    { id: "DGS5", name: "5 YR CMT" },
+    { id: "DGS7", name: "7 YR CMT" },
+    { id: "DGS10", name: "10 YR CMT" },
+  ];
+
+  const fetchRates = async () => {
+    try {
       localStorage.removeItem("sakLendingRates");
-
-      const series = [
-        { id: "DPRIME", name: "PRIME RATE" },
-        { id: "SOFR", name: "SOFR" },
-        { id: "SOFRTERM1M", name: "1 MO TERM SOFR", placeholder: true },
-        { id: "SOFRTERM6M", name: "6 MO TERM SOFR", placeholder: true },
-        { id: "SOFR30DAYAVG", name: "30 DAY AVG SOFR" },
-        { id: "SOFRSWAP5YR", name: "5 YR ANN SWAP SOFR", placeholder: true },
-        { id: "SOFRSWAP7YR", name: "7 YR ANN SWAP SOFR", placeholder: true },
-        { id: "SOFRSWAP10YR", name: "10 YR ANN SWAP SOFR", placeholder: true },
-        { id: "DGS3", name: "3 YR TREASURY" },
-        { id: "DGS5", name: "5 YR TREASURY" },
-        { id: "DGS7", name: "7 YR TREASURY" },
-        { id: "DGS10", name: "10 YR TREASURY" },
-        { id: "DGS30", name: "30 YR TREASURY" },
-        { id: "DGS1", name: "1 YR CMT" },
-        { id: "DGS5", name: "5 YR CMT" },
-        { id: "DGS7", name: "7 YR CMT" },
-        { id: "DGS10", name: "10 YR CMT" },
-      ];
-
       let newRates = series.map(({ name }) => ({
         name,
         today: "N/A",
         thirtyDaysAgo: "N/A",
       }));
-
-      try {
-        const apiKey = "5ad79840506fa5e2ad9a94a13b1066b3";
-        const today = DateTime.local().setZone("America/New_York");
-        const dayOfWeek = today.weekday;
-        let endDate = today;
-        if (dayOfWeek === 7) {
-          endDate = today.minus({ days: 2 });
-        } else if (dayOfWeek === 6) {
-          endDate = today.minus({ days: 1 });
-        }
-        endDate = DateTime.min(endDate, DateTime.fromISO("2025-08-15"));
-        const endDateStr = endDate.toISODate();
-        const startDate = endDate.minus({ days: 6 });
-        const startDateStr = startDate.toISODate();
-        const thirtyDaysAgo = endDate.minus({ days: 30 });
-        const thirtyDaysAgoStr = thirtyDaysAgo.toISODate();
-
-        console.log(`Fetching rates for period: ${startDateStr} to ${endDateStr}, 30 days ago: ${thirtyDaysAgoStr}`);
-        console.log("API URL:", process.env.REACT_APP_API_URL);
-
-        for (const { id, name, placeholder } of series) {
-          if (placeholder) {
-            console.warn(`Placeholder for ${name}: No FRED series available`);
-            newRates = newRates.map(rate =>
-              rate.name === name ? { name, today: "N/A", thirtyDaysAgo: "N/A" } : rate
-            );
-            continue;
-          }
-
-          try {
-            console.log(`Fetching ${id} for ${thirtyDaysAgoStr} to ${endDateStr}`);
-            const response = await fetch(
-              `${process.env.REACT_APP_API_URL}/api/rates?series_id=${id}&api_key=${apiKey}&start=${thirtyDaysAgoStr}&end=${endDateStr}`
-            );
-            if (!response.ok) {
-              console.warn(`API error for ${id}: ${response.status} ${response.statusText}`);
-              continue;
-            }
-            const data = await response.json();
-            console.log(`Raw data for ${id}:`, JSON.stringify(data, null, 2));
-
-            const observations = data.observations || [];
-            if (!observations.length) {
-              console.warn(`No data returned for ${id}`);
-              continue;
-            }
-
-            const validObservations = observations.filter(
-              obs => obs.value !== "." && !isNaN(parseFloat(obs.value))
-            );
-
-            if (!validObservations.length) {
-              console.warn(`No data for ${id} (all values are invalid)`);
-              continue;
-            }
-
-            validObservations.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            const todayValue = validObservations[0].value;
-            const todayDate = validObservations[0].date;
-            const thirtyDaysAgoValue = validObservations.find(
-              obs => obs.date <= thirtyDaysAgoStr
-            )?.value || "N/A";
-            const thirtyDaysAgoDate = validObservations.find(
-              obs => obs.date <= thirtyDaysAgoStr
-            )?.date || "N/A";
-
-            console.log(
-              `Success for ${id}: ${validObservations.length} valid observations, ` +
-              `Today: ${todayValue}% on ${todayDate}, 30 Days Ago: ${thirtyDaysAgoValue}% on ${thirtyDaysAgoDate}`
-            );
-
-            newRates = newRates.map(rate =>
-              rate.name === name
-                ? {
-                    name,
-                    today: todayValue ? `${parseFloat(todayValue).toFixed(3)}%` : "N/A",
-                    thirtyDaysAgo: thirtyDaysAgoValue ? `${parseFloat(thirtyDaysAgoValue).toFixed(3)}%` : "N/A"
-                  }
-                : rate
-            );
-
-            localStorage.setItem("sakLendingRates", JSON.stringify(newRates));
-          } catch (error) {
-            console.warn(`Error fetching ${id}: ${error.message}`);
-            continue;
-          }
-        }
-
-        setRates(newRates);
-      } catch (error) {
-        console.error("Unexpected error in fetchRates:", error.message);
-        setRates(newRates);
+      const apiKey = "5ad79840506fa5e2ad9a94a13b1066b3";
+      const today = DateTime.local().setZone("America/New_York");
+      const dayOfWeek = today.weekday;
+      let endDate = today;
+      if (dayOfWeek === 7) {
+        endDate = today.minus({ days: 2 });
+      } else if (dayOfWeek === 6) {
+        endDate = today.minus({ days: 1 });
       }
-    };
-
-    fetchRates();
-  }, []);
+      endDate = DateTime.min(endDate, DateTime.fromISO("2025-08-15"));
+      const endDateStr = endDate.toISODate();
+      const startDate = endDate.minus({ days: 6 });
+      const startDateStr = startDate.toISODate();
+      const thirtyDaysAgo = endDate.minus({ days: 30 });
+      const thirtyDaysAgoStr = thirtyDaysAgo.toISODate();
+      for (const { id, name, placeholder } of series) {
+        if (placeholder) {
+          newRates = newRates.map(rate =>
+            rate.name === name ? { name, today: "N/A", thirtyDaysAgo: "N/A" } : rate
+          );
+          continue;
+        }
+        try {
+          const response = await fetch(
+            `${process.env.REACT_APP_API_URL}/api/rates?series_id=${id}&api_key=${apiKey}&start=${thirtyDaysAgoStr}&end=${endDateStr}`
+          );
+          if (!response.ok) {
+            console.warn(`API error for ${id}: ${response.status} ${response.statusText}`);
+            continue;
+          }
+          const data = await response.json();
+          const observations = data.observations || [];
+          if (!observations.length) {
+            console.warn(`No data returned for ${id}`);
+            continue;
+          }
+          const validObservations = observations.filter(
+            obs => obs.value !== "." && !isNaN(parseFloat(obs.value))
+          );
+          if (!validObservations.length) {
+            console.warn(`No data for ${id} (all values are invalid)`);
+            continue;
+          }
+          validObservations.sort((a, b) => new Date(b.date) - new Date(a.date));
+          const todayValue = validObservations[0].value;
+          const thirtyDaysAgoValue = validObservations.find(
+            obs => obs.date <= thirtyDaysAgoStr
+          )?.value || "N/A";
+          newRates = newRates.map(rate =>
+            rate.name === name
+              ? {
+                  name,
+                  today: todayValue ? `${parseFloat(todayValue).toFixed(3)}%` : "N/A",
+                  thirtyDaysAgo: thirtyDaysAgoValue ? `${parseFloat(thirtyDaysAgoValue).toFixed(3)}%` : "N/A"
+                }
+              : rate
+          );
+          localStorage.setItem("sakLendingRates", JSON.stringify(newRates));
+        } catch (error) {
+          console.warn(`Error fetching ${id}: ${error.message}`);
+          continue;
+        }
+      }
+      setRates(newRates);
+    } catch (error) {
+      console.error("Failed to fetch rates:", error);
+      setRates(series.map(({ name }) => ({ name, today: "N/A", thirtyDaysAgo: "N/A" })));
+    }
+  };
+  fetchRates();
+}, []);
 
   const handleFormChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
