@@ -206,8 +206,6 @@ function App() {
       }
       endDate = DateTime.min(endDate, DateTime.fromISO("2025-08-15"));
       const endDateStr = endDate.toISODate();
-      const startDate = endDate.minus({ days: 6 });
-      const startDateStr = startDate.toISODate();
       const thirtyDaysAgo = endDate.minus({ days: 30 });
       const thirtyDaysAgoStr = thirtyDaysAgo.toISODate();
       for (const { id, name, placeholder } of series) {
