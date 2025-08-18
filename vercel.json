@@ -13,6 +13,10 @@
       "dest": "/static/$1"
     },
     {
+      "src": "/(logo.jpg|office1.jpg|headshot.jpg|manifest.json)",
+      "dest": "/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
