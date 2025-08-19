@@ -33,23 +33,25 @@ function Contact() {
     setContactData({ ...contactData, [e.target.name]: e.target.value });
   };
 
-  const handleContactSubmit = (e) => {
+  const handleContactSubmit = async (e) => {
     e.preventDefault();
-    fetch(`${process.env.REACT_APP_API_URL}/api/send-contact`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(contactData),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setContactSubmitted(true);
-        setContactData({ name: "", message: "" });
-        alert(data.message);
-      })
-      .catch((err) => {
-        console.error("Error sending contact email:", err);
-        alert("Failed to send message. Please try again later.");
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/send-contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(contactData),
       });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to send message");
+      }
+      setContactSubmitted(true);
+      setContactData({ name: "", message: "" });
+      alert(data.message);
+    } catch (err) {
+      console.error("Error sending contact email:", err);
+      alert("Failed to send message. Please try again later.");
+    }
   };
 
   return (
@@ -93,6 +95,7 @@ function Contact() {
 
 function App() {
   const [rates, setRates] = useState([]);
+  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -166,102 +169,141 @@ function App() {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
+  console.log("useEffect triggered for rates fetch at", new Date().toISOString());
+  console.log("Checking localStorage for cached rates");
+  const cacheTime = localStorage.getItem("sakLendingRatesTime");
+  const cachedRates = localStorage.getItem("sakLendingRates");
+
+  if (cacheTime && cachedRates && Date.now() - parseInt(cacheTime) < 3600000) {
+    const parsedRates = JSON.parse(cachedRates);
+    console.log("Cached rates content:", JSON.stringify(parsedRates, null, 2));
+    if (parsedRates && parsedRates.length > 0 && !parsedRates.every(rate => rate.today === "N/A")) {
+      console.log("Using valid cached rates:", parsedRates);
+      setRates(parsedRates);
+      setError(null);
+      return;
+    } else {
+      console.log("Cached rates are invalid (all N/A or empty), clearing cache");
+      localStorage.removeItem("sakLendingRates");
+      localStorage.removeItem("sakLendingRatesTime");
+    }
+  } else {
+    console.log("Cache expired or not found, clearing localStorage");
+    localStorage.removeItem("sakLendingRates");
+    localStorage.removeItem("sakLendingRatesTime");
+  }
+
   const series = [
     { id: "DPRIME", name: "PRIME RATE" },
     { id: "SOFR", name: "SOFR" },
-    { id: "SOFRTERM1M", name: "1 MO TERM SOFR", placeholder: true },
-    { id: "SOFRTERM6M", name: "6 MO TERM SOFR", placeholder: true },
     { id: "SOFR30DAYAVG", name: "30 DAY AVG SOFR" },
-    { id: "SOFRSWAP5YR", name: "5 YR ANN SWAP SOFR", placeholder: true },
-    { id: "SOFRSWAP7YR", name: "7 YR ANN SWAP SOFR", placeholder: true },
-    { id: "SOFRSWAP10YR", name: "10 YR ANN SWAP SOFR", placeholder: true },
+    { id: "GS1", name: "1 YR CMT" },
+    { id: "GS3", name: "3 YR CMT" },
+    { id: "GS5", name: "5 YR CMT" },
+    { id: "GS7", name: "7 YR CMT" },
+    { id: "DGS1", name: "1 YR TREASURY" },
     { id: "DGS3", name: "3 YR TREASURY" },
     { id: "DGS5", name: "5 YR TREASURY" },
     { id: "DGS7", name: "7 YR TREASURY" },
     { id: "DGS10", name: "10 YR TREASURY" },
     { id: "DGS30", name: "30 YR TREASURY" },
-    { id: "DGS1", name: "1 YR CMT" },
-    { id: "DGS5", name: "5 YR CMT" },
-    { id: "DGS7", name: "7 YR CMT" },
-    { id: "DGS10", name: "10 YR CMT" },
   ];
 
   const fetchRates = async () => {
     try {
-      localStorage.removeItem("sakLendingRates");
+      console.log("Starting fetchRates, REACT_APP_API_URL:", process.env.REACT_APP_API_URL || "undefined");
+      if (!process.env.REACT_APP_API_URL) {
+        throw new Error("REACT_APP_API_URL is not defined in environment variables");
+      }
+
       let newRates = series.map(({ name }) => ({
         name,
         today: "N/A",
         thirtyDaysAgo: "N/A",
       }));
-      const apiKey = "5ad79840506fa5e2ad9a94a13b1066b3";
-      const today = DateTime.local().setZone("America/New_York");
-      const dayOfWeek = today.weekday;
-      let endDate = today;
-      if (dayOfWeek === 7) {
-        endDate = today.minus({ days: 2 });
-      } else if (dayOfWeek === 6) {
-        endDate = today.minus({ days: 1 });
-      }
-      endDate = DateTime.min(endDate, DateTime.fromISO("2025-08-15"));
-      const endDateStr = endDate.toISODate();
-      const thirtyDaysAgo = endDate.minus({ days: 30 });
-      const thirtyDaysAgoStr = thirtyDaysAgo.toISODate();
-      for (const { id, name, placeholder } of series) {
-        if (placeholder) {
-          newRates = newRates.map(rate =>
-            rate.name === name ? { name, today: "N/A", thirtyDaysAgo: "N/A" } : rate
-          );
-          continue;
-        }
+
+      const endDate = new Date().toISOString().split("T")[0];
+      const startDate = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      console.log(`Date range: start=${startDate}, end=${endDate}`);
+
+      let fetchSuccess = false;
+      for (const { id, name } of series) {
         try {
-          const response = await fetch(
-            `${process.env.REACT_APP_API_URL}/api/rates?series_id=${id}&api_key=${apiKey}&start=${thirtyDaysAgoStr}&end=${endDateStr}`
-          );
-          if (!response.ok) {
-            console.warn(`API error for ${id}: ${response.status} ${response.statusText}`);
-            continue;
-          }
+          const url = `${process.env.REACT_APP_API_URL}/api/rates?series_id=${id}&start=${startDate}&end=${endDate}`;
+          console.log(`Fetching rates for ${id}: ${url}`);
+          const response = await fetch(url, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          });
+          console.log(`Response status for ${id}: ${response.status}, ok: ${response.ok}`);
           const data = await response.json();
+          console.log(`Response data for ${id}:`, JSON.stringify(data, null, 2));
+
+          if (!response.ok) {
+            console.warn(`Backend API error for ${id}: ${data.error || response.statusText} (Status: ${response.status})`);
+            continue;
+          }
+
           const observations = data.observations || [];
+          console.log(`Observations for ${id}:`, observations);
           if (!observations.length) {
-            console.warn(`No data returned for ${id}`);
+            console.warn(`No observations returned for ${id}`);
             continue;
           }
+
           const validObservations = observations.filter(
-            obs => obs.value !== "." && !isNaN(parseFloat(obs.value))
+            (obs) => obs.value && obs.value !== "." && !isNaN(parseFloat(obs.value))
           );
+
           if (!validObservations.length) {
-            console.warn(`No data for ${id} (all values are invalid)`);
+            console.warn(`No valid data for ${id}`);
             continue;
           }
+
           validObservations.sort((a, b) => new Date(b.date) - new Date(a.date));
           const todayValue = validObservations[0].value;
-          const thirtyDaysAgoValue = validObservations.find(
-            obs => obs.date <= thirtyDaysAgoStr
-          )?.value || "N/A";
-          newRates = newRates.map(rate =>
+          const thirtyDaysAgoTarget = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+          const thirtyDaysAgoValue = validObservations
+            .filter((obs) => obs.date <= thirtyDaysAgoTarget)
+            .sort((a, b) => new Date(b.date) - new Date(a.date))[0]?.value || "N/A";
+
+          console.log(`Today value for ${id}: ${todayValue}, 30 days ago value: ${thirtyDaysAgoValue}`);
+
+          newRates = newRates.map((rate) =>
             rate.name === name
               ? {
                   name,
-                  today: todayValue ? `${parseFloat(todayValue).toFixed(3)}%` : "N/A",
-                  thirtyDaysAgo: thirtyDaysAgoValue ? `${parseFloat(thirtyDaysAgoValue).toFixed(3)}%` : "N/A"
+                  today: todayValue && !isNaN(parseFloat(todayValue)) ? `${parseFloat(todayValue).toFixed(3)}%` : "N/A",
+                  thirtyDaysAgo: thirtyDaysAgoValue && !isNaN(parseFloat(thirtyDaysAgoValue)) ? `${parseFloat(thirtyDaysAgoValue).toFixed(3)}%` : "N/A",
                 }
               : rate
           );
-          localStorage.setItem("sakLendingRates", JSON.stringify(newRates));
+          console.log(`Updated rates for ${id}:`, newRates.find((rate) => rate.name === name));
+          fetchSuccess = true;
         } catch (error) {
-          console.warn(`Error fetching ${id}: ${error.message}`);
+          console.error(`Error fetching ${id}: ${error.message}, stack: ${error.stack}`);
           continue;
         }
       }
+
+      console.log("Final rates state:", JSON.stringify(newRates, null, 2));
       setRates(newRates);
+      localStorage.setItem("sakLendingRates", JSON.stringify(newRates));
+      localStorage.setItem("sakLendingRatesTime", Date.now().toString());
+
+      if (!fetchSuccess || newRates.every((rate) => rate.today === "N/A")) {
+        setError("No valid rate data available. Please check the console for details or try again later.");
+      } else {
+        setError(null);
+      }
     } catch (error) {
-      console.error("Failed to fetch rates:", error);
-      setRates(series.map(({ name }) => ({ name, today: "N/A", thirtyDaysAgo: "N/A" })));
+      console.error("Failed to fetch rates:", error.message, error.stack);
+      setError(`Unable to load rates: ${error.message}. Please check the console or try again later.`);
     }
   };
+
+  console.log("Calling fetchRates");
   fetchRates();
 }, []);
 
@@ -273,33 +315,35 @@ function App() {
     setCalculatorData({ ...calculatorData, [e.target.name]: e.target.value });
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
-    fetch(`${process.env.REACT_APP_API_URL}/api/send-email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setFormSubmitted(true);
-        setFormData({
-          firstName: "",
-          lastName: "",
-          phone: "",
-          email: "",
-          loanAmount: "",
-          propertyType: "",
-          loanType: "",
-          state: "",
-          comments: "",
-        });
-        alert(data.message);
-      })
-      .catch((err) => {
-        console.error("Error sending email:", err);
-        alert("Failed to send email. Please try again later.");
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/send-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
       });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to send email");
+      }
+      setFormSubmitted(true);
+      setFormData({
+        firstName: "",
+        lastName: "",
+        phone: "",
+        email: "",
+        loanAmount: "",
+        propertyType: "",
+        loanType: "",
+        state: "",
+        comments: "",
+      });
+      alert(data.message);
+    } catch (err) {
+      console.error("Error sending email:", err);
+      alert("Failed to send email. Please try again later.");
+    }
   };
 
   const handleCalculatorSubmit = (e) => {
@@ -382,6 +426,7 @@ function App() {
                       </div>
                     </section>
                     <section className="rates-section-wrapper">
+                      {error && <div className="error-message">{error}</div>}
                       <div className="rates-table-container">
                         <table className="rates-table">
                           <thead>
@@ -392,15 +437,13 @@ function App() {
                             </tr>
                           </thead>
                           <tbody>
-                            {rates
-                              .filter(rate => rate.today !== "N/A")
-                              .map((rate, index) => (
-                                <tr key={index}>
-                                  <td>{rate.name}</td>
-                                  <td>{rate.today}</td>
-                                  <td>{rate.thirtyDaysAgo}</td>
-                                </tr>
-                              ))}
+                            {rates.map((rate, index) => (
+                              <tr key={index}>
+                                <td>{rate.name}</td>
+                                <td>{rate.today}</td>
+                                <td>{rate.thirtyDaysAgo}</td>
+                              </tr>
+                            ))}
                           </tbody>
                         </table>
                       </div>
