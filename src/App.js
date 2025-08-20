@@ -295,13 +295,13 @@ function App() {
         localStorage.setItem("sakLendingRatesTime", Date.now().toString());
 
         if (!fetchSuccess || newRates.every((rate) => rate.today === "N/A")) {
-          setError("No valid rate data available. Please try again later or contact support.");
+          setError("No valid rate data available. Please try again later or contact support at info@saklending.com.");
         } else {
           setError(null);
         }
       } catch (error) {
         console.error("Failed to fetch rates:", error.message, error.stack);
-        setError(`Unable to load rates: ${error.message}. Please try again later or contact support.`);
+        setError(`Unable to load rates: ${error.message}. Please try again later or contact support at info@saklending.com.`);
       }
     };
 
