@@ -14,48 +14,54 @@ body {
 .header {
   background-color: #f7fafc;
   border-bottom: 1px solid #e5e7eb;
-  padding: 0.33rem;
+  padding: 0.3rem 0.6rem;
   position: fixed;
   top: 0;
   width: 100%;
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   z-index: 1000;
 }
 
 .logo-container {
-  margin-left: 2rem;
+  margin-left: 0.5rem;
+  text-align: left;
 }
 
 .header-logo {
-  height: 4.8rem;
+  height: 4rem;
 }
 
 /* Navigation */
 .nav {
   display: flex;
   align-items: center;
-  overflow-x: auto;
-  white-space: nowrap;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: flex-end;
+  max-width: 70%; /* Prevent overflow */
 }
 
 .nav a {
-  margin: 0 1rem;
+  margin: 0 0.3rem;
   text-decoration: none;
   color: #003087;
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 500;
-  padding: 0 0.25rem;
+  padding: 0.2rem 0.4rem;
+  background: #e5e7eb;
+  border-radius: 0.2rem;
 }
 
 .nav a:hover {
-  text-decoration: underline;
+  background: #d1d5db;
 }
 
 /* Main content */
 .main {
-  padding: 7rem 0 3rem;
+  padding: 5rem 0 3rem; /* Flush left/right, adjusted top */
   background-color: #f7fafc;
 }
 
@@ -91,14 +97,14 @@ body {
   text-align: center;
   color: #ffffff;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-  background: rgba(0, 0, 0, 0.5);
-  padding: 1rem;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 0.5rem 0.75rem;
   border-radius: 0.3rem;
-  width: 50%;
-  max-width: calc(66.67% - 4rem); /* Fit within left 66.67% */
-  left: calc(66.67% / 2); /* Center in left 66.67% */
+  width: auto;
+  max-width: 50%; /* Tighter for text */
+  left: 33.33%;
   top: 50%;
-  transform: translate(-50%, -50%); /* Center horizontally and vertically */
+  transform: translate(-50%, -50%);
 }
 
 .image-text h2 {
@@ -131,22 +137,23 @@ body {
 .rates-table-container {
   flex-grow: 1;
   background-color: powderblue;
-  border-radius: 0.3rem;
   height: 100%;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
+  border-radius: 0;
+  overflow-x: auto;
 }
 
 .rates-table {
   width: 100%;
   height: 100%;
-  border-collapse: separate;
+  border-collapse: collapse;
   border-spacing: 0;
-  box-shadow: 0 2.4px 7.2px rgba(0, 0, 0, 0.1);
-  border-radius: 0.3rem;
-  table-layout: fixed;
+  box-shadow: none;
+  table-layout: auto;
+  background-color: powderblue;
 }
 
 .rates-table th,
@@ -154,9 +161,9 @@ body {
   border: 1px solid #e5e7eb;
   text-align: center;
   font-size: 0.85rem;
-  min-width: 100px;
+  padding: 0.5rem;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
   overflow: hidden;
 }
 
@@ -168,10 +175,11 @@ body {
 
 .rates-table td {
   padding: 0.5rem;
+  background-color: powderblue;
 }
 
 .rates-table tr {
-  height: calc(100% / 11); /* 11 rows */
+  height: auto;
 }
 
 /* Disclaimer */
@@ -196,6 +204,7 @@ body {
 }
 
 .form-section h2 {
+  text-align: center !important;
   font-size: 1.5rem;
   margin-bottom: 1rem;
   color: #003087;
@@ -252,6 +261,7 @@ body {
   border-radius: 0.3rem;
   cursor: pointer;
   font-size: 1rem;
+  width: 100%;
 }
 
 .form button:hover {
@@ -354,6 +364,7 @@ body {
 }
 
 .about-container h2 {
+  text-align: center !important;
   font-size: 1.5rem;
   margin-bottom: 1rem;
   color: #003087;
@@ -392,6 +403,7 @@ body {
 }
 
 .contact-container h2 {
+  text-align: center !important;
   font-size: 1.5rem;
   margin-bottom: 1rem;
   color: #003087;
@@ -427,16 +439,17 @@ body {
   border-radius: 0.3rem;
 }
 
-/* Responsive adjustments */
+/* Responsive adjustments for tablets and mobiles */
 @media (max-width: 768px) {
   .header {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 0.5rem;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.3rem 0.5rem;
   }
 
   .logo-container {
-    margin-left: 1rem;
+    margin-left: 0;
   }
 
   .header-logo {
@@ -446,92 +459,102 @@ body {
   .nav {
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 0.75rem;
-    width: 100%;
-    justify-content: space-around;
+    gap: 0.2rem;
+    justify-content: flex-end;
+    max-width: 65%; /* Prevent overflow */
   }
 
   .nav a {
-    font-size: 0.9rem;
-    padding: 0.5rem;
+    font-size: 0.7rem; /* Smaller for two lines */
+    margin: 0 0.2rem;
+    padding: 0.2rem 0.3rem;
   }
 
   .main {
-    padding-top: 3.66rem;
-    padding-bottom: 1.5rem;
+    padding-top: 3.5rem;
+    padding-bottom: 1rem;
   }
 
   .image-section {
-    height: auto;
-    flex-direction: column;
-    align-items: center;
+    height: 50vh; /* Reduced for stacking */
+    margin: 0;
   }
 
   .office-image {
-    height: 33.33vh;
+    height: 100%;
+    top: 0;
   }
 
   .image-text {
-    padding: 0.5rem;
-    font-size: 0.9rem;
-    width: 80%;
+    width: auto;
+    max-width: 70%;
+    padding: 0.5rem 0.75rem;
     left: 50%;
+    top: 50%;
     transform: translate(-50%, -50%);
-    max-width: none;
   }
 
   .image-text h2 {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
   }
 
   .image-text p {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
   }
 
   .rates-section-wrapper {
     position: static;
     width: 100%;
     height: auto;
-    margin: 1rem;
+    margin: 0.5rem 0 0; /* Sliver of white space */
     padding: 0;
   }
 
   .rates-table-container {
     height: auto;
-    background-color: powderblue;
     padding: 0;
+    border-radius: 0;
+    overflow-x: auto;
   }
 
   .rates-table {
-    height: auto;
+    table-layout: auto;
   }
 
   .rates-table th,
   .rates-table td {
-    font-size: 0.75rem;
-    min-width: 80px;
-  }
-
-  .rates-table tr {
-    height: auto;
+    font-size: 0.8rem;
+    min-width: 70px;
+    padding: 0.5rem;
   }
 
   .disclaimer-wrapper {
-    margin-top: 0.5rem;
+    font-size: 0.7rem;
   }
 
   .form-wrapper {
     max-width: 100%;
-    margin: 1rem;
+    margin: 1rem 0;
   }
 
   .form-section {
-    padding: 1.5rem;
+    padding: 1rem;
+  }
+
+  .form-section h2 {
+    font-size: 1.25rem;
+    text-align: center !important;
   }
 
   .form-columns {
     flex-direction: column;
     gap: 1rem;
+  }
+
+  .form button {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    width: 100%;
   }
 
   .tabs {
@@ -542,24 +565,183 @@ body {
   .tab {
     width: 100%;
     text-align: center;
+    font-size: 0.85rem;
   }
 
   .about-container,
   .contact-container,
   .content-page {
     max-width: 100%;
-    margin: 1rem;
+    margin: 1rem 0;
     padding: 1rem;
+  }
+
+  .about-container h2,
+  .contact-container h2,
+  .content-page .centered-header {
+    font-size: 1.25rem;
+    text-align: center !important;
   }
 
   .about-bio {
     flex-direction: column;
     align-items: center;
     text-align: center;
+    gap: 1rem;
   }
 
   .headshot {
     width: 100px;
     height: 100px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .header-logo {
+    height: 1.8rem;
+  }
+
+  .nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.15rem;
+    justify-content: flex-start;
+    max-width: 100%; /* Full width for two lines */
+    padding: 0.2rem 0;
+    line-height: 1.2; /* Tighter line spacing */
+  }
+
+  .nav a {
+    font-size: 0.65rem; /* Smaller for two lines */
+    margin: 0 0.15rem;
+    padding: 0.15rem 0.25rem;
+  }
+
+  .main {
+    padding-top: 4.5rem; /* Increased for header */
+  }
+
+  .image-section {
+    height: 40vh; /* Adjusted for stacking */
+    margin: 0;
+  }
+
+  .office-image {
+    height: 100%;
+    top: 0;
+  }
+
+  .image-text {
+    width: auto;
+    max-width: 80%;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .image-text h2 {
+    font-size: 1.2rem;
+  }
+
+  .image-text p {
+    font-size: 0.8rem;
+  }
+
+  .rates-table th,
+  .rates-table td {
+    font-size: 0.75rem;
+    min-width: 60px;
+    padding: 0.4rem;
+  }
+
+  .form-section h2 {
+    font-size: 1.1rem;
+    text-align: center !important;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    font-size: 0.8rem;
+    padding: 0.4rem;
+  }
+
+  .form button {
+    padding: 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  .about-container h2,
+  .contact-container h2,
+  .content-page .centered-header {
+    font-size: 1.1rem;
+    text-align: center !important;
+  }
+
+  .headshot {
+    width: 80px;
+    height: 80px;
+  }
+}
+
+/* Landscape mode */
+@media (max-width: 768px) and (orientation: landscape) {
+  .header {
+    padding: 0.3rem 0;
+  }
+
+  .logo-container {
+    margin-left: 0;
+  }
+
+  .header-logo {
+    height: 1.8rem;
+  }
+
+  .nav {
+    max-width: 60%; /* Prevent overflow */
+  }
+
+  .nav a {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.25rem;
+  }
+
+  .image-section {
+    height: 40vh; /* Adjusted for stacking */
+    margin: 0;
+  }
+
+  .office-image {
+    height: 100%;
+  }
+
+  .image-text {
+    width: auto;
+    max-width: 60%;
+    padding: 0.5rem 0.75rem;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .image-text h2 {
+    font-size: 1.3rem;
+  }
+
+  .image-text p {
+    font-size: 0.8rem;
+  }
+
+  .rates-section-wrapper {
+    position: static;
+    width: 100%;
+    height: auto;
+    margin: 0.5rem 0 0; /* Sliver of white space */
+    padding: 0;
   }
 }
