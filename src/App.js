@@ -164,7 +164,7 @@ function App() {
       description: "Private Money Loans offer fast, flexible financing for unique or non-traditional commercial real estate projects. Sourced from private investors, these loans provide quick approvals and customized terms, ideal for borrowers needing expedited funding or facing unconventional lending scenarios."
     },
     "Refinance": {
-      title: "Refinance Loan",
+      title: "Refinance (Cash out)",
       description: "Refinance Loans allow you to replace existing commercial property loans with better terms, lower rates, or adjusted repayment schedules. Ideal for optimizing your financing structure, these loans help reduce costs and improve cash flow for your real estate investments."
     }
   };
@@ -406,7 +406,7 @@ function App() {
           <nav className="nav">
             <Link to="/">Home</Link>
             <Link to="/about">About Us</Link>
-            <Link to="/products">Loan Products</Link>
+            <Link to="/products">Services</Link>
             <Link to="/contact">Contact Us</Link>
             <Link to="/quote" onClick={handleQuoteLink}>Get Quote</Link>
             <Link to="/calculator" onClick={toggleCalculator}>Loan Calculator</Link>
@@ -632,7 +632,7 @@ function App() {
               path="/products"
               element={
                 <div className="content-page">
-                  <h2 className="centered-header">Loan Products</h2>
+                  <h2 className="centered-header">Services</h2>
                   <div className="tabs-container">
                     <div className="tabs">
                       {loanTypes.map((type, index) => (
