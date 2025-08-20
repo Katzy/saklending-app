@@ -169,143 +169,145 @@ function App() {
     }
   };
 
-useEffect(() => {
-  console.log("useEffect triggered for rates fetch at", new Date().toISOString());
-  console.log("Checking localStorage for cached rates");
-  const cacheTime = localStorage.getItem("sakLendingRatesTime");
-  const cachedRates = localStorage.getItem("sakLendingRates");
+  useEffect(() => {
+    console.log("useEffect triggered for rates fetch at", new Date().toISOString());
+    console.log("Checking localStorage for cached rates");
+    const cacheTime = localStorage.getItem("sakLendingRatesTime");
+    const cachedRates = localStorage.getItem("sakLendingRates");
 
-  if (cacheTime && cachedRates && Date.now() - parseInt(cacheTime) < 3600000) {
-    const parsedRates = JSON.parse(cachedRates);
-    console.log("Cached rates content:", JSON.stringify(parsedRates, null, 2));
-    if (parsedRates && parsedRates.length > 0 && !parsedRates.every(rate => rate.today === "N/A")) {
-      console.log("Using valid cached rates:", parsedRates);
-      setRates(parsedRates);
-      setError(null);
-      return;
+    if (cacheTime && cachedRates && Date.now() - parseInt(cacheTime) < 3600000) {
+      const parsedRates = JSON.parse(cachedRates);
+      console.log("Cached rates content:", JSON.stringify(parsedRates, null, 2));
+      if (parsedRates && parsedRates.length > 0 && !parsedRates.every(rate => rate.today === "N/A")) {
+        console.log("Using valid cached rates:", parsedRates);
+        setRates(parsedRates);
+        setError(null);
+        return;
+      } else {
+        console.log("Cached rates are invalid (all N/A or empty), clearing cache");
+        localStorage.removeItem("sakLendingRates");
+        localStorage.removeItem("sakLendingRatesTime");
+      }
     } else {
-      console.log("Cached rates are invalid (all N/A or empty), clearing cache");
+      console.log("Cache expired or not found, clearing localStorage");
       localStorage.removeItem("sakLendingRates");
       localStorage.removeItem("sakLendingRatesTime");
     }
-  } else {
-    console.log("Cache expired or not found, clearing localStorage");
-    localStorage.removeItem("sakLendingRates");
-    localStorage.removeItem("sakLendingRatesTime");
-  }
 
-  const series = [
-    { id: "DPRIME", name: "PRIME RATE" },
-    { id: "SOFR", name: "SOFR" },
-    { id: "SOFR30DAYAVG", name: "30 DAY AVG SOFR" },
-    { id: "GS1", name: "1 YR CMT" },
-    { id: "GS3", name: "3 YR CMT" },
-    { id: "GS5", name: "5 YR CMT" },
-    { id: "GS7", name: "7 YR CMT" },
-    { id: "DGS1", name: "1 YR TREASURY" },
-    { id: "DGS3", name: "3 YR TREASURY" },
-    { id: "DGS5", name: "5 YR TREASURY" },
-    { id: "DGS7", name: "7 YR TREASURY" },
-    { id: "DGS10", name: "10 YR TREASURY" },
-    { id: "DGS30", name: "30 YR TREASURY" },
-  ];
+    const series = [
+      { id: "DPRIME", name: "PRIME RATE" },
+      { id: "SOFR", name: "SOFR" },
+      { id: "SOFR30DAYAVG", name: "30 DAY AVG SOFR" },
+      { id: "GS1", name: "1 YR CMT" },
+      { id: "GS3", name: "3 YR CMT" },
+      { id: "GS5", name: "5 YR CMT" },
+      { id: "GS7", name: "7 YR CMT" },
+      { id: "DGS1", name: "1 YR TREASURY" },
+      { id: "DGS3", name: "3 YR TREASURY" },
+      { id: "DGS5", name: "5 YR TREASURY" },
+      { id: "DGS7", name: "7 YR TREASURY" },
+      { id: "DGS10", name: "10 YR TREASURY" },
+      { id: "DGS30", name: "30 YR TREASURY" },
+    ];
 
-  const fetchRates = async () => {
-    try {
-      console.log("Starting fetchRates, REACT_APP_API_URL:", process.env.REACT_APP_API_URL || "undefined");
-      if (!process.env.REACT_APP_API_URL) {
-        throw new Error("REACT_APP_API_URL is not defined in environment variables");
-      }
-
-      let newRates = series.map(({ name }) => ({
-        name,
-        today: "N/A",
-        thirtyDaysAgo: "N/A",
-      }));
-
-      const endDate = new Date().toISOString().split("T")[0];
-      const startDate = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-      console.log(`Date range: start=${startDate}, end=${endDate}`);
-
-      let fetchSuccess = false;
-      for (const { id, name } of series) {
-        try {
-          const url = `${process.env.REACT_APP_API_URL}/api/rates?series_id=${id}&start=${startDate}&end=${endDate}`;
-          console.log(`Fetching rates for ${id}: ${url}`);
-          const response = await fetch(url, {
-            method: "GET",
-            headers: { "Content-Type": "application/json" },
-          });
-          console.log(`Response status for ${id}: ${response.status}, ok: ${response.ok}`);
-          const data = await response.json();
-          console.log(`Response data for ${id}:`, JSON.stringify(data, null, 2));
-
-          if (!response.ok) {
-            console.warn(`Backend API error for ${id}: ${data.error || response.statusText} (Status: ${response.status})`);
-            continue;
-          }
-
-          const observations = data.observations || [];
-          console.log(`Observations for ${id}:`, observations);
-          if (!observations.length) {
-            console.warn(`No observations returned for ${id}`);
-            continue;
-          }
-
-          const validObservations = observations.filter(
-            (obs) => obs.value && obs.value !== "." && !isNaN(parseFloat(obs.value))
-          );
-
-          if (!validObservations.length) {
-            console.warn(`No valid data for ${id}`);
-            continue;
-          }
-
-          validObservations.sort((a, b) => new Date(b.date) - new Date(a.date));
-          const todayValue = validObservations[0].value;
-          const thirtyDaysAgoTarget = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-          const thirtyDaysAgoValue = validObservations
-            .filter((obs) => obs.date <= thirtyDaysAgoTarget)
-            .sort((a, b) => new Date(b.date) - new Date(a.date))[0]?.value || "N/A";
-
-          console.log(`Today value for ${id}: ${todayValue}, 30 days ago value: ${thirtyDaysAgoValue}`);
-
-          newRates = newRates.map((rate) =>
-            rate.name === name
-              ? {
-                  name,
-                  today: todayValue && !isNaN(parseFloat(todayValue)) ? `${parseFloat(todayValue).toFixed(3)}%` : "N/A",
-                  thirtyDaysAgo: thirtyDaysAgoValue && !isNaN(parseFloat(thirtyDaysAgoValue)) ? `${parseFloat(thirtyDaysAgoValue).toFixed(3)}%` : "N/A",
-                }
-              : rate
-          );
-          console.log(`Updated rates for ${id}:`, newRates.find((rate) => rate.name === name));
-          fetchSuccess = true;
-        } catch (error) {
-          console.error(`Error fetching ${id}: ${error.message}, stack: ${error.stack}`);
-          continue;
+    const fetchRates = async () => {
+      try {
+        console.log("Starting fetchRates, REACT_APP_API_URL:", process.env.REACT_APP_API_URL || "undefined");
+        if (!process.env.REACT_APP_API_URL) {
+          throw new Error("REACT_APP_API_URL is not defined in environment variables");
         }
+
+        let newRates = series.map(({ name }) => ({
+          name,
+          today: "N/A",
+          thirtyDaysAgo: "N/A",
+        }));
+
+        // Use a past date range to ensure FRED API data availability
+        const endDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // Yesterday
+        const startDate = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // 45 days ago
+        console.log(`Date range: start=${startDate}, end=${endDate}`);
+
+        let fetchSuccess = false;
+        for (const { id, name } of series) {
+          try {
+            const url = `${process.env.REACT_APP_API_URL}/api/rates?series_id=${id}&start=${startDate}&end=${endDate}`;
+            console.log(`Fetching rates for ${id}: ${url}`);
+            const response = await fetch(url, {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+            });
+            console.log(`Response status for ${id}: ${response.status}, ok: ${response.ok}`);
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.warn(`Backend API error for ${id}: ${errorText} (Status: ${response.status})`);
+              throw new Error(`HTTP error! Status: ${response.status}, Response: ${errorText}`);
+            }
+
+            const data = await response.json();
+            console.log(`Response data for ${id}:`, JSON.stringify(data, null, 2));
+
+            const observations = data.observations || [];
+            console.log(`Observations for ${id}:`, observations);
+            if (!observations.length) {
+              console.warn(`No observations returned for ${id}`);
+              continue;
+            }
+
+            const validObservations = observations.filter(
+              (obs) => obs.value && obs.value !== "." && !isNaN(parseFloat(obs.value))
+            );
+
+            if (!validObservations.length) {
+              console.warn(`No valid data for ${id}`);
+              continue;
+            }
+
+            validObservations.sort((a, b) => new Date(b.date) - new Date(a.date));
+            const todayValue = validObservations[0].value;
+            const thirtyDaysAgoTarget = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+            const thirtyDaysAgoValue = validObservations
+              .filter((obs) => obs.date <= thirtyDaysAgoTarget)
+              .sort((a, b) => new Date(b.date) - new Date(a.date))[0]?.value || "N/A";
+
+            console.log(`Today value for ${id}: ${todayValue}, 30 days ago value: ${thirtyDaysAgoValue}`);
+
+            newRates = newRates.map((rate) =>
+              rate.name === name
+                ? {
+                    name,
+                    today: todayValue && !isNaN(parseFloat(todayValue)) ? `${parseFloat(todayValue).toFixed(3)}%` : "N/A",
+                    thirtyDaysAgo: thirtyDaysAgoValue && !isNaN(parseFloat(thirtyDaysAgoValue)) ? `${parseFloat(thirtyDaysAgoValue).toFixed(3)}%` : "N/A",
+                  }
+                : rate
+            );
+            console.log(`Updated rates for ${id}:`, newRates.find((rate) => rate.name === name));
+            fetchSuccess = true;
+          } catch (error) {
+            console.error(`Error fetching ${id}: ${error.message}, stack: ${error.stack}`);
+            continue;
+          }
+        }
+
+        console.log("Final rates state:", JSON.stringify(newRates, null, 2));
+        setRates(newRates);
+        localStorage.setItem("sakLendingRates", JSON.stringify(newRates));
+        localStorage.setItem("sakLendingRatesTime", Date.now().toString());
+
+        if (!fetchSuccess || newRates.every((rate) => rate.today === "N/A")) {
+          setError("No valid rate data available. Please try again later or contact support.");
+        } else {
+          setError(null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch rates:", error.message, error.stack);
+        setError(`Unable to load rates: ${error.message}. Please try again later or contact support.`);
       }
+    };
 
-      console.log("Final rates state:", JSON.stringify(newRates, null, 2));
-      setRates(newRates);
-      localStorage.setItem("sakLendingRates", JSON.stringify(newRates));
-      localStorage.setItem("sakLendingRatesTime", Date.now().toString());
-
-      if (!fetchSuccess || newRates.every((rate) => rate.today === "N/A")) {
-        setError("No valid rate data available. Please check the console for details or try again later.");
-      } else {
-        setError(null);
-      }
-    } catch (error) {
-      console.error("Failed to fetch rates:", error.message, error.stack);
-      setError(`Unable to load rates: ${error.message}. Please check the console or try again later.`);
-    }
-  };
-
-  console.log("Calling fetchRates");
-  fetchRates();
-}, []);
+    console.log("Calling fetchRates");
+    fetchRates();
+  }, []);
 
   const handleFormChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
