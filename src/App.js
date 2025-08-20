@@ -8,7 +8,7 @@ function About() {
     <div className="about-container">
       <h2>About Us</h2>
       <p className="intro-paragraph">
-        SAK Lending provides clients with an end to end guidance during the complete loan process. Each loan requires a nuanced approach and our goal is to shield you from stress of the loan process while acquiring you the best rates available. If your loan doesn't fund, we don't get paid.
+        SAK Lending provides clients with an end to end guidance during the complete loan process. Each loan requires a nuanced approach and our goal is to shield you from stress of the loan process while securing the best rates available. If your loan doesn't fund, we don't get paid.
       </p>
       <div className="about-bio">
         <img src="/headshot.jpg" alt="Scott Katz" className="headshot" />
