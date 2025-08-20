@@ -14,7 +14,7 @@ function About() {
         <img src="/headshot.jpg" alt="Scott Katz" className="headshot" />
         <div className="bio-text">
           <p>
-            Scott Katz founded SAK Lending to provide bespoke financing solutions for commercial real estate projects. With over 15 years of experience in the lending industry, Scott has built a reputation for securing competitive rates and terms for his clients, navigating complex transactions with ease. His commitment to transparency and client success drives SAK Lending’s mission to simplify the loan process while maximizing value.
+            Scott Katz founded SAK Lending to provide bespoke financing solutions for commercial real estate projects. With over 20 years of experience in financial markets, Scott has built a reputation for securing competitive rates and terms for his clients, navigating complex transactions with ease. His commitment to transparency and client success drives SAK Lending’s mission to simplify the loan process while maximizing value.
           </p>
         </div>
       </div>
