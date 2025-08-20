@@ -41,7 +41,7 @@ body {
   flex-wrap: wrap;
   gap: 0.3rem;
   justify-content: flex-end;
-  max-width: 70%; /* Prevent overflow */
+  max-width: 70%;
 }
 
 .nav a {
@@ -51,17 +51,15 @@ body {
   font-size: 0.9rem;
   font-weight: 500;
   padding: 0.2rem 0.4rem;
-  background: #e5e7eb;
-  border-radius: 0.2rem;
 }
 
 .nav a:hover {
-  background: #d1d5db;
+  text-decoration: underline;
 }
 
 /* Main content */
 .main {
-  padding: 5rem 0 3rem; /* Flush left/right, adjusted top */
+  padding: 5rem 0 3rem;
   background-color: #f7fafc;
 }
 
@@ -101,7 +99,7 @@ body {
   padding: 0.5rem 0.75rem;
   border-radius: 0.3rem;
   width: auto;
-  max-width: 50%; /* Tighter for text */
+  max-width: 50%;
   left: 33.33%;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -461,11 +459,11 @@ body {
     flex-wrap: wrap;
     gap: 0.2rem;
     justify-content: flex-end;
-    max-width: 65%; /* Prevent overflow */
+    max-width: 65%;
   }
 
   .nav a {
-    font-size: 0.7rem; /* Smaller for two lines */
+    font-size: 0.75rem;
     margin: 0 0.2rem;
     padding: 0.2rem 0.3rem;
   }
@@ -476,7 +474,7 @@ body {
   }
 
   .image-section {
-    height: 50vh; /* Reduced for stacking */
+    height: 50vh;
     margin: 0;
   }
 
@@ -506,7 +504,7 @@ body {
     position: static;
     width: 100%;
     height: auto;
-    margin: 0.5rem 0 0; /* Sliver of white space */
+    margin: 0.5rem 0 0;
     padding: 0;
   }
 
@@ -610,25 +608,27 @@ body {
   .nav {
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 0.15rem;
+    gap: 0.1rem;
     justify-content: flex-start;
-    max-width: 100%; /* Full width for two lines */
+    max-width: 100%;
     padding: 0.2rem 0;
-    line-height: 1.2; /* Tighter line spacing */
+    line-height: 1.2;
   }
 
   .nav a {
-    font-size: 0.65rem; /* Smaller for two lines */
-    margin: 0 0.15rem;
-    padding: 0.15rem 0.25rem;
+    font-size: 0.75rem; /* Slightly larger */
+    margin: 0 0.1rem;
+    padding: 0.15rem 0.2rem;
+    flex: 1 0 30%; /* Three per line */
+    text-align: center;
   }
 
   .main {
-    padding-top: 4.5rem; /* Increased for header */
+    padding-top: 5rem; /* Increased for taller header */
   }
 
   .image-section {
-    height: 40vh; /* Adjusted for stacking */
+    height: 40vh;
     margin: 0;
   }
 
@@ -703,7 +703,7 @@ body {
   }
 
   .nav {
-    max-width: 60%; /* Prevent overflow */
+    max-width: 60%;
   }
 
   .nav a {
@@ -712,7 +712,7 @@ body {
   }
 
   .image-section {
-    height: 40vh; /* Adjusted for stacking */
+    height: 40vh;
     margin: 0;
   }
 
@@ -741,7 +741,7 @@ body {
     position: static;
     width: 100%;
     height: auto;
-    margin: 0.5rem 0 0; /* Sliver of white space */
+    margin: 0.5rem 0 0;
     padding: 0;
   }
 }
