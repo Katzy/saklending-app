@@ -14,7 +14,7 @@ body {
 .header {
   background-color: #f7fafc;
   border-bottom: 1px solid #e5e7eb;
-  padding: 0.5rem 1rem; /* Increased padding for better spacing */
+  padding: 0.5rem 1rem;
   position: fixed;
   top: 0;
   width: 100%;
@@ -25,7 +25,7 @@ body {
 }
 
 .logo-container {
-  margin-left: 1rem; /* Reduced margin for mobile */
+  margin-left: 1rem;
 }
 
 .header-logo {
@@ -37,7 +37,7 @@ body {
   display: flex;
   align-items: center;
   flex-wrap: wrap; /* Allow wrapping to prevent overflow */
-  gap: 0.5rem; /* Smaller gap for mobile */
+  gap: 0.5rem;
 }
 
 .nav a {
@@ -55,7 +55,7 @@ body {
 
 /* Main content */
 .main {
-  padding: 7rem 1rem 3rem; /* Adjusted padding for mobile */
+  padding: 7rem 1rem 3rem;
   background-color: #f7fafc;
 }
 
@@ -134,9 +134,10 @@ body {
   border-radius: 0.3rem;
   height: 100%;
   margin: 0;
-  padding: 0.5rem; /* Added padding for better spacing */
+  padding: 0.5rem;
   display: flex;
   flex-direction: column;
+  overflow-x: auto; /* Ensure table is scrollable on mobile */
 }
 
 .rates-table {
@@ -146,7 +147,7 @@ body {
   border-spacing: 0;
   box-shadow: 0 2.4px 7.2px rgba(0, 0, 0, 0.1);
   border-radius: 0.3rem;
-  table-layout: auto; /* Changed to auto for better column sizing */
+  table-layout: auto; /* Better column sizing */
 }
 
 .rates-table th,
@@ -156,7 +157,7 @@ body {
   font-size: 0.85rem;
   padding: 0.5rem;
   text-overflow: ellipsis;
-  white-space: normal; /* Allow wrapping for mobile */
+  white-space: normal; /* Allow wrapping */
   overflow: hidden;
 }
 
@@ -171,7 +172,7 @@ body {
 }
 
 .rates-table tr {
-  height: auto; /* Allow rows to adjust height */
+  height: auto; /* Flexible row height */
 }
 
 /* Disclaimer */
@@ -196,7 +197,7 @@ body {
 }
 
 .form-section h2 {
-  text-align: center !important; /* Ensure centering with high specificity */
+  text-align: center !important;
   font-size: 1.5rem;
   margin-bottom: 1rem;
   color: #003087;
@@ -355,7 +356,7 @@ body {
 }
 
 .about-container h2 {
-  text-align: center !important; /* Ensure centering with high specificity */
+  text-align: center !important;
   font-size: 1.5rem;
   margin-bottom: 1rem;
   color: #003087;
@@ -394,7 +395,7 @@ body {
 }
 
 .contact-container h2 {
-  text-align: center !important; /* Ensure centering with high specificity */
+  text-align: center !important;
   font-size: 1.5rem;
   margin-bottom: 1rem;
   color: #003087;
@@ -444,7 +445,7 @@ body {
   }
 
   .header-logo {
-    height: 3rem; /* Smaller logo for tablets */
+    height: 3rem;
   }
 
   .nav {
@@ -453,7 +454,7 @@ body {
     justify-content: center;
     width: 100%;
     padding: 0.5rem 0;
-    overflow-x: hidden; /* Prevent horizontal scrolling */
+    overflow-x: hidden;
   }
 
   .nav a {
@@ -463,12 +464,12 @@ body {
   }
 
   .main {
-    padding-top: 5rem; /* Adjusted for smaller header */
+    padding-top: 5rem;
     padding-bottom: 1.5rem;
   }
 
   .image-section {
-    height: 40vh; /* Reduced height for better mobile fit */
+    height: 40vh;
     flex-direction: column;
     align-items: center;
   }
@@ -507,7 +508,7 @@ body {
   }
 
   .rates-table {
-    table-layout: auto; /* Ensure columns adjust to content */
+    table-layout: auto;
   }
 
   .rates-table th,
@@ -532,22 +533,12 @@ body {
 
   .form-section h2 {
     font-size: 1.25rem;
+    text-align: center !important;
   }
 
   .form-columns {
     flex-direction: column;
     gap: 1rem;
-  }
-
-  .form-group input,
-  .form-group select,
-  .form-group textarea {
-    font-size: 0.85rem;
-  }
-
-  .form button {
-    font-size: 0.9rem;
-    padding: 0.5rem;
   }
 
   .tabs {
@@ -573,6 +564,7 @@ body {
   .contact-container h2,
   .content-page .centered-header {
     font-size: 1.25rem;
+    text-align: center !important;
   }
 
   .about-bio {
@@ -595,7 +587,7 @@ body {
   }
 
   .header-logo {
-    height: 2.5rem; /* Smaller logo for phones */
+    height: 2.5rem;
   }
 
   .nav a {
@@ -609,7 +601,7 @@ body {
   }
 
   .image-section {
-    height: 30vh; /* Further reduced for small screens */
+    height: 30vh;
   }
 
   .office-image {
@@ -638,6 +630,7 @@ body {
 
   .form-section h2 {
     font-size: 1.1rem;
+    text-align: center !important;
   }
 
   .form-group input,
@@ -656,6 +649,7 @@ body {
   .contact-container h2,
   .content-page .centered-header {
     font-size: 1.1rem;
+    text-align: center !important;
   }
 
   .headshot {
