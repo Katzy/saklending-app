@@ -108,11 +108,15 @@ function App() {
     comments: "",
   });
   const [calculatorData, setCalculatorData] = useState({
+    purchasePrice: "",
     loanAmount: "",
+    noi: "",
+    ltv: "",
     interestRate: "",
     loanTerm: "",
   });
   const [calculatorResults, setCalculatorResults] = useState(null);
+  const [calculatorError, setCalculatorError] = useState(null);
   const [showCalculator, setShowCalculator] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [activeTab, setActiveTab] = useState("New Purchase");
@@ -314,7 +318,45 @@ function App() {
   };
 
   const handleCalculatorChange = (e) => {
-    setCalculatorData({ ...calculatorData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setCalculatorData((prev) => {
+      const newData = { ...prev, [name]: value };
+      const loan = parseFloat(newData.loanAmount) || 0;
+      const price = parseFloat(newData.purchasePrice) || 0;
+      const ltv = parseFloat(value) || 0;
+
+      // Handle LTV input
+      if (name === "ltv") {
+        if (!isNaN(ltv) && ltv >= 0 && ltv <= 100) {
+          newData.ltv = ltv.toString(); // Store as string to allow manual entry
+          if (price > 0) {
+            // LTV + Purchase Price -> Update Loan Amount
+            newData.loanAmount = Math.round((ltv / 100) * price).toString();
+          }
+        } else {
+          newData.ltv = ""; // Allow invalid input temporarily for user correction
+        }
+      }
+      // Handle Purchase Price change
+      else if (name === "purchasePrice" && price > 0) {
+        if (parseFloat(newData.ltv) > 0 && parseFloat(newData.ltv) <= 100) {
+          // Purchase Price + LTV -> Update Loan Amount
+          newData.loanAmount = Math.round((parseFloat(newData.ltv) / 100) * price).toString();
+        } else if (loan > 0) {
+          // Purchase Price + Loan Amount -> Update LTV
+          newData.ltv = ((loan / price) * 100).toFixed(2);
+        }
+      }
+      // Handle Loan Amount change
+      else if (name === "loanAmount" && loan > 0) {
+        if (price > 0) {
+          // Loan Amount + Purchase Price -> Update LTV
+          newData.ltv = ((loan / price) * 100).toFixed(2);
+        }
+      }
+
+      return newData;
+    });
   };
 
   const handleFormSubmit = async (e) => {
@@ -350,26 +392,69 @@ function App() {
 
   const handleCalculatorSubmit = (e) => {
     e.preventDefault();
+    const purchasePrice = parseFloat(calculatorData.purchasePrice);
     const principal = parseFloat(calculatorData.loanAmount);
+    const noi = parseFloat(calculatorData.noi);
+    const ltv = parseFloat(calculatorData.ltv);
     const interest = parseFloat(calculatorData.interestRate) / 100 / 12;
     const payments = parseFloat(calculatorData.loanTerm) * 12;
+
+    // Validate inputs
+    if (!purchasePrice || purchasePrice <= 0) {
+      setCalculatorError("Purchase Price must be greater than 0");
+      return;
+    }
+    if (!principal || principal <= 0) {
+      setCalculatorError("Loan Amount must be greater than 0");
+      return;
+    }
+    if (principal > purchasePrice) {
+      setCalculatorError("Loan Amount cannot exceed Purchase Price");
+      return;
+    }
+    if (!noi || noi <= 0) {
+      setCalculatorError("Net Operating Income must be greater than 0");
+      return;
+    }
+    if (!ltv || ltv < 0 || ltv > 100) {
+      setCalculatorError("LTV must be between 0% and 100%");
+      return;
+    }
+    if (!interest || interest <= 0) {
+      setCalculatorError("Interest Rate must be greater than 0");
+      return;
+    }
+    if (!payments || payments <= 0) {
+      setCalculatorError("Loan Term must be greater than 0");
+      return;
+    }
+
+    // Calculate monthly payments and metrics
     const x = Math.pow(1 + interest, payments);
     const monthlyPI = (principal * x * interest) / (x - 1);
     const monthlyInterestOnly = principal * interest;
-    if (isFinite(monthlyPI)) {
+    const capRate = (noi / purchasePrice) * 100;
+    const dscr = (noi / 12) / monthlyPI;
+
+    if (isFinite(monthlyPI) && isFinite(capRate) && isFinite(dscr)) {
       setCalculatorResults({
         monthlyPI: monthlyPI.toFixed(2),
         monthlyInterestOnly: monthlyInterestOnly.toFixed(2),
+        ltv: ltv.toFixed(2),
+        capRate: capRate.toFixed(2),
+        dscr: dscr.toFixed(2),
       });
+      setCalculatorError(null);
     } else {
-      alert("Please check your numbers");
+      setCalculatorError("Please check your numbers");
     }
   };
 
   const toggleCalculator = () => {
     setShowCalculator(!showCalculator);
     setCalculatorResults(null);
-    setCalculatorData({ loanAmount: "", interestRate: "", loanTerm: "" });
+    setCalculatorError(null);
+    setCalculatorData({ purchasePrice: "", loanAmount: "", noi: "", ltv: "", interestRate: "", loanTerm: "" });
     setFormSubmitted(false);
   };
 
@@ -458,47 +543,90 @@ function App() {
                     <section className="form-section" id={showCalculator ? "calculator" : "quote"}>
                       <h2>{showCalculator ? "Loan Calculator" : formSubmitted ? "Inquiry Sent" : "Request a Quote"}</h2>
                       {showCalculator ? (
-                        <form onSubmit={handleCalculatorSubmit} className="form calculator-form">
-                          <div className="form-group">
-                            <label>Loan Amount ($)</label>
-                            <input
-                              type="number"
-                              name="loanAmount"
-                              value={calculatorData.loanAmount}
-                              onChange={handleCalculatorChange}
-                              required
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label>Interest Rate (%)</label>
-                            <input
-                              type="number"
-                              name="interestRate"
-                              value={calculatorData.interestRate}
-                              onChange={handleCalculatorChange}
-                              step="0.1"
-                              required
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label>Loan Term (Years)</label>
-                            <input
-                              type="number"
-                              name="loanTerm"
-                              value={calculatorData.loanTerm}
-                              onChange={handleCalculatorChange}
-                              required
-                            />
-                          </div>
-                          <button type="submit">Calculate</button>
+                        <div className="calculator-form-container">
+                          <form onSubmit={handleCalculatorSubmit} className="form calculator-form">
+                            <div className="form-group">
+                              <label>Purchase Price ($)</label>
+                              <input
+                                type="number"
+                                name="purchasePrice"
+                                value={calculatorData.purchasePrice}
+                                onChange={handleCalculatorChange}
+                                required
+                                step="10000"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Loan Amount ($)</label>
+                              <input
+                                type="number"
+                                name="loanAmount"
+                                value={calculatorData.loanAmount}
+                                onChange={handleCalculatorChange}
+                                required
+                                step="10000"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Net Operating Income (Annual, $)</label>
+                              <input
+                                type="number"
+                                name="noi"
+                                value={calculatorData.noi}
+                                onChange={handleCalculatorChange}
+                                required
+                                step="10000"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Loan-to-Value (LTV) (%)</label>
+                              <input
+                                type="number"
+                                name="ltv"
+                                value={calculatorData.ltv}
+                                onChange={handleCalculatorChange}
+                                step="0.1"
+                                min="0"
+                                max="100"
+                                required
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Interest Rate (%)</label>
+                              <input
+                                type="number"
+                                name="interestRate"
+                                value={calculatorData.interestRate}
+                                onChange={handleCalculatorChange}
+                                step="0.1"
+                                required
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Loan Term (Years)</label>
+                              <input
+                                type="number"
+                                name="loanTerm"
+                                value={calculatorData.loanTerm}
+                                onChange={handleCalculatorChange}
+                                required
+                              />
+                            </div>
+                            <button type="submit">Calculate</button>
+                            {calculatorError && (
+                              <div className="error-message">{calculatorError}</div>
+                            )}
+                          </form>
                           {calculatorResults && (
                             <div className="calculator-results">
-                              <h3>Monthly Payments</h3>
-                              <p>Principal & Interest: ${calculatorResults.monthlyPI}</p>
-                              <p>Interest Only: ${calculatorResults.monthlyInterestOnly}</p>
+                              <p>Monthly Principal & Interest: ${calculatorResults.monthlyPI}</p>
+                              <p>Monthly Interest Only: ${calculatorResults.monthlyInterestOnly}</p>
+                              <p>LTV: {calculatorResults.ltv}%</p>
+                              <p>Cap Rate: {calculatorResults.capRate}%</p>
+                              <p>DSCR: {calculatorResults.dscr}</p>
                             </div>
                           )}
-                        </form>
+                        </div>
                       ) : formSubmitted ? (
                         <div className="thank-you-message">
                           <p>{getThankYouMessage()}</p>
@@ -791,50 +919,93 @@ function App() {
             <Route
               path="/calculator"
               element={
-                <div className="form-wrapper">
+                <div className="form-wrapper calculator-wrapper">
                   <section className="form-section" id="calculator">
                     <h2>Loan Calculator</h2>
-                    <form onSubmit={handleCalculatorSubmit} className="form calculator-form">
-                      <div className="form-group">
-                        <label>Loan Amount ($)</label>
-                        <input
-                          type="number"
-                          name="loanAmount"
-                          value={calculatorData.loanAmount}
-                          onChange={handleCalculatorChange}
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Interest Rate (%)</label>
-                        <input
-                          type="number"
-                          name="interestRate"
-                          value={calculatorData.interestRate}
-                          onChange={handleCalculatorChange}
-                          step="0.1"
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Loan Term (Years)</label>
-                        <input
-                          type="number"
-                          name="loanTerm"
-                          value={calculatorData.loanTerm}
-                          onChange={handleCalculatorChange}
-                          required
-                        />
-                      </div>
-                      <button type="submit">Calculate</button>
+                    <div className="calculator-form-container">
+                      <form onSubmit={handleCalculatorSubmit} className="form calculator-form">
+                        <div className="form-group">
+                          <label>Purchase Price ($)</label>
+                          <input
+                            type="number"
+                            name="purchasePrice"
+                            value={calculatorData.purchasePrice}
+                            onChange={handleCalculatorChange}
+                            required
+                            step="10000"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Loan Amount ($)</label>
+                          <input
+                            type="number"
+                            name="loanAmount"
+                            value={calculatorData.loanAmount}
+                            onChange={handleCalculatorChange}
+                            required
+                            step="10000"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Net Operating Income (Annual, $)</label>
+                          <input
+                            type="number"
+                            name="noi"
+                            value={calculatorData.noi}
+                            onChange={handleCalculatorChange}
+                            required
+                            step="10000"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Loan-to-Value (LTV) (%)</label>
+                          <input
+                            type="number"
+                            name="ltv"
+                            value={calculatorData.ltv}
+                            onChange={handleCalculatorChange}
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            required
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Interest Rate (%)</label>
+                          <input
+                            type="number"
+                            name="interestRate"
+                            value={calculatorData.interestRate}
+                            onChange={handleCalculatorChange}
+                            step="0.1"
+                            required
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Loan Term (Years)</label>
+                          <input
+                            type="number"
+                            name="loanTerm"
+                            value={calculatorData.loanTerm}
+                            onChange={handleCalculatorChange}
+                            required
+                          />
+                        </div>
+                        <button type="submit">Calculate</button>
+                        {calculatorError && (
+                          <div className="error-message">{calculatorError}</div>
+                        )}
+                      </form>
                       {calculatorResults && (
                         <div className="calculator-results">
-                          <h3>Monthly Payments</h3>
-                          <p>Principal & Interest: ${calculatorResults.monthlyPI}</p>
-                          <p>Interest Only: ${calculatorResults.monthlyInterestOnly}</p>
+                          <p>Monthly Principal & Interest: ${calculatorResults.monthlyPI}</p>
+                          <p>Monthly Interest Only: ${calculatorResults.monthlyInterestOnly}</p>
+                          <p>LTV: {calculatorResults.ltv}%</p>
+                          <p>Cap Rate: {calculatorResults.capRate}%</p>
+                          <p>DSCR: {calculatorResults.dscr}</p>
                         </div>
                       )}
-                    </form>
+                    </div>
                   </section>
                 </div>
               }
