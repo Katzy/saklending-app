@@ -1,0 +1,88 @@
+'use client'
+
+import Link from 'next/link'
+import Image from 'next/image'
+import { usePathname } from 'next/navigation'
+import { useState } from 'react'
+
+const navLinks = [
+  { href: '/',           label: 'Home' },
+  { href: '/about',      label: 'About Us' },
+  { href: '/services',   label: 'Services' },
+  { href: '/contact',    label: 'Contact Us' },
+  { href: '/quote',      label: 'Get Quote' },
+  { href: '/calculator', label: 'Loan Calculator' },
+]
+
+export default function Header() {
+  const pathname = usePathname()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <header className="fixed top-0 w-full z-50 bg-gray-50 border-b border-gray-200">
+      <div className="flex items-center justify-between px-4 h-16">
+        <Link href="/" className="flex-shrink-0" onClick={() => setOpen(false)}>
+          <Image
+            src="/logo.jpg"
+            alt="SAK Lending"
+            width={120}
+            height={48}
+            className="h-12 w-auto"
+            priority
+          />
+        </Link>
+
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-1">
+          {navLinks.map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              className={`px-2 py-1 text-sm font-medium rounded transition-colors ${
+                pathname === href
+                  ? 'text-white bg-[#003087]'
+                  : 'text-[#003087] hover:underline'
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Mobile hamburger */}
+        <button
+          className="md:hidden flex flex-col justify-center items-center w-9 h-9 gap-1.5"
+          onClick={() => setOpen((v) => !v)}
+          aria-label="Toggle menu"
+        >
+          <span className={`block w-6 h-0.5 bg-[#003087] transition-all duration-200 ${open ? 'rotate-45 translate-y-2' : ''}`} />
+          <span className={`block w-6 h-0.5 bg-[#003087] transition-all duration-200 ${open ? 'opacity-0' : ''}`} />
+          <span className={`block w-6 h-0.5 bg-[#003087] transition-all duration-200 ${open ? '-rotate-45 -translate-y-2' : ''}`} />
+        </button>
+      </div>
+
+      {/* Brand blue accent line */}
+      <div className="h-0.5 bg-[#003087]" />
+
+      {/* Mobile drawer */}
+      {open && (
+        <nav className="md:hidden bg-gray-50 border-t border-gray-100 px-4 py-3 flex flex-col gap-1">
+          {navLinks.map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setOpen(false)}
+              className={`px-3 py-2.5 text-sm font-medium rounded transition-colors ${
+                pathname === href
+                  ? 'text-white bg-[#003087]'
+                  : 'text-[#003087] hover:bg-blue-50'
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
+    </header>
+  )
+}
