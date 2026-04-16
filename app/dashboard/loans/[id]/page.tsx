@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import StreetView from '@/components/StreetView'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LoanData = Record<string, any>
@@ -341,6 +342,35 @@ export default function LoanDetailPage() {
           ))}
         </div>
       </div>
+
+      {/* ── Property image ── */}
+      {(imageUrl || loan.address_street) && (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-4">
+          {imageUrl ? (
+            <Image src={imageUrl} alt="Property" width={900} height={300} className="w-full object-cover h-52" />
+          ) : (
+            <StreetView
+              street={loan.address_street}
+              city={loan.address_city}
+              state={loan.address_state}
+              zip={loan.address_zip}
+              width={900}
+              height={300}
+              className="w-full object-cover h-52"
+            />
+          )}
+          <div className="px-4 py-2 flex items-center justify-between border-t border-gray-100">
+            <p className="text-xs text-gray-400">{imageUrl ? 'Uploaded photo' : 'Google Street View'}</p>
+            <div className="flex items-center gap-3">
+              <input ref={fileRef} type="file" accept="image/*" onChange={uploadImage} className="hidden" />
+              <button onClick={() => fileRef.current?.click()} disabled={imageUploading}
+                className="text-xs text-[#003087] hover:underline disabled:opacity-50">
+                {imageUploading ? 'Uploading...' : imageUrl ? 'Replace photo' : 'Upload photo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Loan Request ── */}
       <Section title="Loan Request">

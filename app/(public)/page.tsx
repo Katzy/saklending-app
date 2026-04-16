@@ -238,7 +238,7 @@ export default function HomePage() {
           SAK Lending provides end-to-end guidance through the complete loan process — from initial structuring to closing. We act as your dedicated debt concierge, navigating lenders, terms, and timelines on your behalf.
         </p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {['New Purchase','Ground Up Construction','Fix & Flip','SBA','Bridge Loan','Refinance'].map(t => (
+          {['Purchase','Refinance','Ground Up Construction','Short-Term Bridge','Small Balance DSCR','CMBS'].map(t => (
             <Link
               key={t}
               href="/services"

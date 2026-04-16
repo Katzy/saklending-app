@@ -39,6 +39,8 @@ export async function POST(req: NextRequest) {
       contact_id: auth.contact_id,
       property_id: body.property_id ?? null,
       loan_amount: body.loan_amount ?? null,
+      purchase_price: body.purchase_price ?? null,
+      noi: body.noi ?? null,
       loan_purpose: body.loan_purpose ?? null,
       loan_program: body.loan_program ?? null,
       property_type: body.property_type ?? null,
@@ -75,9 +77,11 @@ export async function POST(req: NextRequest) {
         `Borrower:      ${borrowerLine}`,
         contact?.email ? `Email:         ${contact.email}` : null,
         `Property:      ${address}`,
-        body.loan_purpose ? `Purpose:       ${body.loan_purpose}` : null,
-        body.loan_program ? `Program:       ${body.loan_program.replace('_', ' ')}` : null,
-        body.loan_amount  ? `Loan Amount:   $${Number(body.loan_amount).toLocaleString()}` : null,
+        body.loan_purpose   ? `Purpose:        ${body.loan_purpose}` : null,
+        body.loan_program   ? `Program:        ${body.loan_program.replace('_', ' ')}` : null,
+        body.loan_amount    ? `Loan Amount:    $${Number(body.loan_amount).toLocaleString()}` : null,
+        body.purchase_price ? `Property Value: $${Number(body.purchase_price).toLocaleString()}` : null,
+        body.noi            ? `NOI:            $${Number(body.noi).toLocaleString()}` : null,
       ].filter(Boolean).join('\n')
 
       const loanUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://saklending.com'}/dashboard/loans/${data.id}`

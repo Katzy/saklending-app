@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { createContext, useContext, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { PasswordRequiredContext } from '@/lib/borrower-context'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -12,11 +13,6 @@ const NAV = [
   { href: '/borrower/properties', label: 'My Properties' },
 ]
 
-// Context so the profile page can clear the pw_required flag
-export const PasswordRequiredContext = createContext<{ clear: () => void }>({ clear: () => {} })
-export function usePasswordRequired() {
-  return useContext(PasswordRequiredContext)
-}
 
 export default function BorrowerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()

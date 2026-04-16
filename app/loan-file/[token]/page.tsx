@@ -35,6 +35,8 @@ export default function BankPortalPage() {
   const { token } = useParams<{ token: string }>()
   const [password, setPassword] = useState('')
   const [phase, setPhase] = useState<'gate' | 'loading' | 'package' | 'error'>('gate')
+  const [decision, setDecision] = useState<'interested' | 'pass' | null>(null)
+  const [decisionSending, setDecisionSending] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [pkg, setPkg] = useState<Package | null>(null)
 
@@ -108,6 +110,17 @@ export default function BankPortalPage() {
   }
 
   // ── Loan package ───────────────────────────────────────────────
+  async function handleDecision(action: 'interested' | 'pass') {
+    setDecisionSending(true)
+    await fetch(`/api/bank-links/${token}/notify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    })
+    setDecision(action)
+    setDecisionSending(false)
+  }
+
   if (!pkg) return null
   const { loan, contact, documents } = pkg
   const noi = calcNOI(loan)
@@ -127,15 +140,46 @@ export default function BankPortalPage() {
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-5">
 
-        {/* Borrower */}
+        {/* Decision bar */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <p className="font-semibold text-gray-900 text-sm">Ready to make a decision?</p>
+            <p className="text-xs text-gray-500 mt-0.5">Let SAK Lending know if you want to move forward or pass on this deal.</p>
+          </div>
+          {decision ? (
+            <div className={`px-4 py-2 rounded-lg text-sm font-semibold ${decision === 'interested' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-50 text-gray-600 border border-gray-200'}`}>
+              {decision === 'interested' ? '✅ We notified SAK Lending you\'re interested.' : '❌ We notified SAK Lending you\'re passing.'}
+            </div>
+          ) : (
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleDecision('interested')}
+                disabled={decisionSending}
+                className="bg-green-600 text-white px-5 py-2 rounded font-medium text-sm hover:bg-green-700 disabled:opacity-50 transition"
+              >
+                Interested
+              </button>
+              <button
+                onClick={() => handleDecision('pass')}
+                disabled={decisionSending}
+                className="border border-gray-300 text-gray-700 px-5 py-2 rounded font-medium text-sm hover:bg-gray-50 disabled:opacity-50 transition"
+              >
+                Pass
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Borrower — contact info redacted, underwriting info shown */}
         {contact && (
-          <Section title="Borrower">
+          <Section title="Sponsor">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <Row label="Name" value={`${contact.first_name} ${contact.last_name}`} />
               {contact.entity_name && <Row label="Entity" value={contact.entity_name} />}
-              <Row label="Email" value={contact.email} />
-              {contact.phone && <Row label="Phone" value={contact.phone} />}
               {contact.credit_score_estimate && <Row label="Credit Score Est." value={String(contact.credit_score_estimate)} />}
+              <div>
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Contact</p>
+                <p className="text-sm text-gray-400 italic">Available through SAK Lending</p>
+              </div>
             </div>
             {contact.sponsor_bio && (
               <div className="mt-4 pt-4 border-t border-gray-100">

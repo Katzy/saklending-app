@@ -4,7 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { firstName, lastName, phone, email, loanAmount, propertyType, loanType, state, comments } = body
+  const { firstName, lastName, phone, email, loanAmount, propertyValue, noi, propertyType, loanType, state, comments } = body
 
   if (!firstName || !lastName || !email || !loanAmount) {
     return NextResponse.json({ error: 'Required fields missing' }, { status: 400 })
@@ -30,6 +30,8 @@ export async function POST(req: NextRequest) {
     await supabase.from('loans').insert({
       contact_id: contact.id,
       loan_amount: parseFloat(loanAmount),
+      purchase_price: propertyValue ? parseFloat(propertyValue) : null,
+      noi: noi ? parseFloat(noi) : null,
       property_type: propertyType,
       loan_program: loanType,
       state,
@@ -39,13 +41,15 @@ export async function POST(req: NextRequest) {
   }
 
   // Send email notification
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+  if (process.env.RESEND_API_KEY) {
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+      host: 'smtp.resend.com',
+      port: 465,
+      secure: true,
+      auth: { user: 'resend', pass: process.env.RESEND_API_KEY },
     })
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: '"SAK Lending" <support@saklending.com>',
       to: 'scott@saklending.com',
       subject: `New Quote Request: ${firstName} ${lastName}`,
       text: `
@@ -55,6 +59,8 @@ Name: ${firstName} ${lastName}
 Phone: ${phone}
 Email: ${email}
 Loan Amount: $${loanAmount}
+Property Value: ${propertyValue ? '$' + Number(propertyValue).toLocaleString() : 'Not provided'}
+NOI: ${noi ? '$' + Number(noi).toLocaleString() : 'Not provided'}
 Property Type: ${propertyType}
 Loan Type: ${loanType}
 State: ${state}

@@ -14,9 +14,19 @@ const navLinks = [
   { href: '/calculator', label: 'Loan Calculator' },
 ]
 
+const SERVICE_LINKS = [
+  { label: 'Purchase',               href: '/services#purchase' },
+  { label: 'Refinance',              href: '/services#refinance' },
+  { label: 'Ground-Up Construction', href: '/services#ground-up-construction' },
+  { label: 'Short-Term Bridge',      href: '/services#short-term-bridge' },
+  { label: 'Small Balance DSCR',     href: '/services#small-balance-dscr' },
+  { label: 'CMBS',                   href: '/services#cmbs' },
+]
+
 export default function Header() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const [servicesOpen, setServicesOpen] = useState(false)
 
   return (
     <header className="fixed top-0 w-full z-50 bg-gray-50 border-b border-gray-200">
@@ -67,20 +77,60 @@ export default function Header() {
       {/* Mobile drawer */}
       {open && (
         <nav className="md:hidden bg-gray-50 border-t border-gray-100 px-4 py-3 flex flex-col gap-1">
-          {navLinks.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setOpen(false)}
-              className={`px-3 py-2.5 text-sm font-medium rounded transition-colors ${
-                pathname === href
-                  ? 'text-white bg-[#003087]'
-                  : 'text-[#003087] hover:bg-blue-50'
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
+          {navLinks.map(({ href, label }) => {
+            if (label === 'Services') {
+              return (
+                <div key={href}>
+                  <button
+                    onClick={() => setServicesOpen((v) => !v)}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded transition-colors ${
+                      pathname === href
+                        ? 'text-white bg-[#003087]'
+                        : 'text-[#003087] hover:bg-blue-50'
+                    }`}
+                  >
+                    <span>Services</span>
+                    <span className="text-xs">{servicesOpen ? '▲' : '▼'}</span>
+                  </button>
+                  {servicesOpen && (
+                    <div className="ml-3 mt-1 flex flex-col gap-0.5">
+                      <Link
+                        href="/services"
+                        onClick={() => { setOpen(false); setServicesOpen(false) }}
+                        className="px-3 py-2 text-sm text-gray-500 hover:text-[#003087] hover:bg-blue-50 rounded"
+                      >
+                        All Programs
+                      </Link>
+                      {SERVICE_LINKS.map(({ label: sLabel, href: sHref }) => (
+                        <Link
+                          key={sHref}
+                          href={sHref}
+                          onClick={() => { setOpen(false); setServicesOpen(false) }}
+                          className="px-3 py-2 text-sm text-gray-600 hover:text-[#003087] hover:bg-blue-50 rounded"
+                        >
+                          {sLabel}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            }
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                className={`px-3 py-2.5 text-sm font-medium rounded transition-colors ${
+                  pathname === href
+                    ? 'text-white bg-[#003087]'
+                    : 'text-[#003087] hover:bg-blue-50'
+                }`}
+              >
+                {label}
+              </Link>
+            )
+          })}
         </nav>
       )}
     </header>

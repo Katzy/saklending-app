@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import StreetView from '@/components/StreetView'
 
 type Loan = {
   id: string
@@ -151,7 +152,17 @@ export default function BorrowerLoanDetailPage() {
       </Link>
 
       {/* Loan summary */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-5">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-5">
+        <StreetView
+          street={loan.address_street}
+          city={loan.address_city}
+          state={loan.address_state}
+          zip={loan.address_zip}
+          width={800}
+          height={300}
+          className="w-full object-cover h-48 sm:h-64"
+        />
+        <div className="p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <h1 className="text-xl font-bold text-gray-900">
@@ -205,6 +216,7 @@ export default function BorrowerLoanDetailPage() {
               <p className="text-gray-800 mt-0.5">{fmt$(loan.arv)}</p>
             </div>
           )}
+        </div>
         </div>
       </div>
 

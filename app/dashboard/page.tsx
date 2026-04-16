@@ -12,11 +12,11 @@ async function getStats() {
     { data: recentLoans },
   ] = await Promise.all([
     supabase.from('contacts').select('*', { count: 'exact', head: true }),
-    supabase.from('loans').select('*', { count: 'exact', head: true }).eq('is_dead', false),
-    supabase.from('loans').select('*', { count: 'exact', head: true }).eq('stage', 'lead').eq('is_dead', false),
+    supabase.from('loans').select('*', { count: 'exact', head: true }).neq('is_dead', true),
+    supabase.from('loans').select('*', { count: 'exact', head: true }).eq('stage', 'lead').neq('is_dead', true),
     supabase.from('loans')
       .select('id, stage, property_type, loan_amount, stage_updated_at, contact_id')
-      .eq('is_dead', false)
+      .neq('is_dead', true)
       .order('stage_updated_at', { ascending: false })
       .limit(5),
   ])
