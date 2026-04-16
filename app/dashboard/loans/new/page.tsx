@@ -218,8 +218,10 @@ function NewLoanPage() {
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]">
               <option value="">— Select —</option>
               <option value="1">1yr Fixed</option>
-              <option value="5">5yr Fixed</option>
-              <option value="10">10yr Fixed</option>
+              <option value="3">3yr Fixed</option>
+              <option value="5">5yr Fixed (balloon)</option>
+              <option value="10">10yr Fixed (balloon)</option>
+              <option value="30">30yr Fixed</option>
             </select>
           </div>
         </div>
