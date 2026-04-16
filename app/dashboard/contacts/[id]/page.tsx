@@ -19,6 +19,10 @@ type Contact = {
   sponsor_bio: string | null
   notes: string | null
   source: string
+  co_borrower_first_name: string | null
+  co_borrower_last_name: string | null
+  co_borrower_email: string | null
+  co_borrower_phone: string | null
 }
 
 type Property = {
@@ -288,6 +292,20 @@ export default function ContactDetailPage() {
           <Field label="Entity / Company" value={contact.entity_name ?? ''} editValue={editData.entity_name ?? ''} editing={editing} onChange={(v) => setEditData({ ...editData, entity_name: v || null })} />
           <Field label="Credit Score Est." value={contact.credit_score_estimate ? String(contact.credit_score_estimate) : ''} editValue={editData.credit_score_estimate ? String(editData.credit_score_estimate) : ''} editing={editing} type="number" onChange={(v) => setEditData({ ...editData, credit_score_estimate: v ? Number(v) : null })} />
         </div>
+
+        {/* Co-Borrower */}
+        {(contact.co_borrower_first_name || editing) && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Co-Borrower</p>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="First Name" value={contact.co_borrower_first_name ?? ''} editValue={editData.co_borrower_first_name ?? ''} editing={editing} onChange={(v) => setEditData({ ...editData, co_borrower_first_name: v || null })} />
+              <Field label="Last Name" value={contact.co_borrower_last_name ?? ''} editValue={editData.co_borrower_last_name ?? ''} editing={editing} onChange={(v) => setEditData({ ...editData, co_borrower_last_name: v || null })} />
+              <Field label="Email" value={contact.co_borrower_email ?? ''} editValue={editData.co_borrower_email ?? ''} editing={editing} onChange={(v) => setEditData({ ...editData, co_borrower_email: v || null })} />
+              <Field label="Phone" value={contact.co_borrower_phone ?? ''} editValue={editData.co_borrower_phone ?? ''} editing={editing} onChange={(v) => setEditData({ ...editData, co_borrower_phone: v || null })} />
+            </div>
+          </div>
+        )}
+
         <div className="mt-4">
           <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Source</label>
           <span className="inline-block px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600 capitalize">
