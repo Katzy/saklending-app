@@ -1,7 +1,6 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
+import { Suspense } from 'react'
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -23,7 +22,7 @@ const SOURCE_LABELS: Record<string, string> = {
   manual: 'Manual',
 }
 
-export default function ContactsPage() {
+function ContactsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -179,4 +178,8 @@ export default function ContactsPage() {
       )}
     </div>
   )
+}
+
+export default function ContactsPageWrapper() {
+  return <Suspense><ContactsPage /></Suspense>
 }
