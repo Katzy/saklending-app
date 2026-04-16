@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 
 type Loan = {
@@ -47,6 +47,8 @@ export default function PipelinePage() {
   const [loans, setLoans] = useState<Loan[]>([])
   const [loading, setLoading] = useState(true)
   const [showDead, setShowDead] = useState(false)
+  const [dragOverStage, setDragOverStage] = useState<string | null>(null)
+  const draggingId = useRef<string | null>(null)
 
   useEffect(() => {
     fetch('/api/loans?page=1')
@@ -56,8 +58,53 @@ export default function PipelinePage() {
 
   const active = loans.filter((l) => !l.is_dead)
   const dead   = loans.filter((l) => l.is_dead)
-
   const byStage = (stage: string) => active.filter((l) => l.stage === stage)
+
+  function handleDragStart(e: React.DragEvent, loanId: string) {
+    draggingId.current = loanId
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  function handleDragOver(e: React.DragEvent, stage: string) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverStage(stage)
+  }
+
+  function handleDragLeave() {
+    setDragOverStage(null)
+  }
+
+  async function handleDrop(e: React.DragEvent, newStage: string) {
+    e.preventDefault()
+    setDragOverStage(null)
+    const id = draggingId.current
+    if (!id) return
+
+    const loan = loans.find((l) => l.id === id)
+    if (!loan || loan.stage === newStage) return
+
+    // Optimistic update
+    setLoans((prev) => prev.map((l) => l.id === id ? { ...l, stage: newStage } : l))
+
+    const res = await fetch(`/api/loans/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stage: newStage }),
+    })
+
+    if (!res.ok) {
+      // Revert on failure
+      setLoans((prev) => prev.map((l) => l.id === id ? { ...l, stage: loan.stage } : l))
+    }
+
+    draggingId.current = null
+  }
+
+  function handleDragEnd() {
+    setDragOverStage(null)
+    draggingId.current = null
+  }
 
   return (
     <div>
@@ -90,34 +137,57 @@ export default function PipelinePage() {
           <div className="flex gap-3 overflow-x-auto pb-4">
             {STAGES.map(({ key, label }) => {
               const cards = byStage(key)
+              const isOver = dragOverStage === key
               return (
-                <div key={key} className="flex-shrink-0 w-48">
+                <div
+                  key={key}
+                  className="flex-shrink-0 w-48"
+                  onDragOver={(e) => handleDragOver(e, key)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, key)}
+                >
                   <div className={`flex items-center justify-between px-3 py-2 rounded-t text-xs font-semibold ${STAGE_HEADER_COLORS[key]}`}>
                     <span>{label}</span>
                     <span className="bg-white bg-opacity-60 rounded-full px-1.5 py-0.5">{cards.length}</span>
                   </div>
-                  <div className="bg-gray-50 border border-gray-200 border-t-0 rounded-b min-h-[200px] p-2 space-y-2">
+                  <div className={`border border-gray-200 border-t-0 rounded-b min-h-[200px] p-2 space-y-2 transition-colors ${
+                    isOver ? 'bg-blue-50 border-[#003087]' : 'bg-gray-50'
+                  }`}>
                     {cards.map((loan) => (
-                      <Link
+                      <div
                         key={loan.id}
-                        href={`/dashboard/loans/${loan.id}`}
-                        className="block bg-white rounded border border-gray-200 p-3 hover:border-[#003087] hover:shadow-sm transition text-sm"
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, loan.id)}
+                        onDragEnd={handleDragEnd}
+                        className="cursor-grab active:cursor-grabbing"
                       >
-                        <p className="font-medium text-gray-900 truncate">
-                          {loan.address_city
-                            ? `${loan.address_city}, ${loan.address_state ?? ''}`
-                            : (loan.property_type ?? 'Loan')}
-                        </p>
-                        {loan.loan_amount && (
-                          <p className="text-[#003087] font-semibold mt-0.5">{fmt(loan.loan_amount)}</p>
-                        )}
-                        <p className="text-xs text-gray-400 mt-1 capitalize">
-                          {[loan.loan_program, loan.loan_purpose].filter(Boolean).join(' · ')}
-                        </p>
-                      </Link>
+                        <Link
+                          href={`/dashboard/loans/${loan.id}`}
+                          draggable={false}
+                          onClick={(e) => {
+                            // Prevent navigation if we just finished dragging
+                            if (draggingId.current) e.preventDefault()
+                          }}
+                          className="block bg-white rounded border border-gray-200 p-3 hover:border-[#003087] hover:shadow-sm transition text-sm select-none"
+                        >
+                          <p className="font-medium text-gray-900 truncate">
+                            {loan.address_city
+                              ? `${loan.address_city}, ${loan.address_state ?? ''}`
+                              : (loan.property_type ?? 'Loan')}
+                          </p>
+                          {loan.loan_amount && (
+                            <p className="text-[#003087] font-semibold mt-0.5">{fmt(loan.loan_amount)}</p>
+                          )}
+                          <p className="text-xs text-gray-400 mt-1 capitalize">
+                            {[loan.loan_program, loan.loan_purpose].filter(Boolean).join(' · ')}
+                          </p>
+                        </Link>
+                      </div>
                     ))}
                     {cards.length === 0 && (
-                      <p className="text-xs text-gray-400 text-center pt-6">Empty</p>
+                      <p className={`text-xs text-center pt-6 ${isOver ? 'text-[#003087]' : 'text-gray-400'}`}>
+                        {isOver ? 'Drop here' : 'Empty'}
+                      </p>
                     )}
                   </div>
                 </div>

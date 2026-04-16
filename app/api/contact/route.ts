@@ -24,13 +24,15 @@ export async function POST(req: NextRequest) {
   })
 
   // Send email notification
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+  if (process.env.RESEND_API_KEY) {
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+      host: 'smtp.resend.com',
+      port: 465,
+      secure: true,
+      auth: { user: 'resend', pass: process.env.RESEND_API_KEY },
     })
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: '"SAK Lending" <support@saklending.com>',
       to: 'scott@saklending.com',
       subject: `Contact Form: ${name}`,
       text: `Name: ${name}\n\nMessage:\n${message}`,

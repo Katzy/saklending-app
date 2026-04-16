@@ -14,32 +14,16 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Supabase puts the recovery tokens in the URL hash
-    // onAuthStateChange fires with event PASSWORD_RECOVERY once tokens are processed
+    // The /auth/reset-callback route handler already exchanged the PKCE code
+    // and set the session in cookies. Just confirm a session exists.
     const supabase = createClient()
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
         setReady(true)
-        subscription.unsubscribe()
+      } else {
+        setError('Reset link expired or already used. Please request a new one.')
       }
     })
-
-    // Also handle the hash directly in case the event already fired
-    const hash = window.location.hash.slice(1)
-    if (hash) {
-      const params = new URLSearchParams(hash)
-      const access_token = params.get('access_token')
-      const refresh_token = params.get('refresh_token')
-      const type = params.get('type')
-      if (access_token && refresh_token && type === 'recovery') {
-        supabase.auth.setSession({ access_token, refresh_token }).then(() => {
-          setReady(true)
-          subscription.unsubscribe()
-        })
-      }
-    }
-
-    return () => subscription.unsubscribe()
   }, [])
 
   async function handleReset(e: React.FormEvent) {
@@ -73,7 +57,12 @@ export default function ResetPasswordPage() {
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-8">
-          {!ready ? (
+          {error ? (
+            <div className="text-center">
+              <p className="text-sm text-red-600">{error}</p>
+              <a href="/login" className="text-sm text-[#003087] hover:underline mt-3 inline-block">Back to login</a>
+            </div>
+          ) : !ready ? (
             <p className="text-sm text-gray-500 text-center">Verifying reset link…</p>
           ) : (
             <form onSubmit={handleReset} className="space-y-4">

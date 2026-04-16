@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import RequestLoanForm from '@/components/borrower/RequestLoanForm'
+import StreetView from '@/components/StreetView'
 
 type Property = {
   id: string
@@ -11,6 +12,7 @@ type Property = {
   address_state: string | null
   address_zip: string | null
   property_type: string | null
+  property_use: string | null
   date_acquired: string | null
   purchase_price: number | null
   mortgage_holder: string | null
@@ -21,9 +23,16 @@ type Property = {
   notes: string | null
 }
 
+type HomeAddress = {
+  street: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
+}
+
 const BLANK: Partial<Property> = {
   address_street: '', address_city: '', address_state: '', address_zip: '',
-  property_type: '', date_acquired: '', purchase_price: null,
+  property_type: '', property_use: 'investment', date_acquired: '', purchase_price: null,
   mortgage_holder: '', mortgage_balance: null, monthly_payment: null,
   interest_rate: null, loan_maturity_date: '', notes: '',
 }
@@ -37,6 +46,7 @@ export default function BorrowerPropertiesPage() {
   type BorrowerLoan = { id: string; property_id: string | null; address_street: string | null; loan_program: string | null; address_city: string | null; stage: string }
   const [properties, setProperties] = useState<Property[]>([])
   const [loans, setLoans] = useState<BorrowerLoan[]>([])
+  const [home, setHome] = useState<HomeAddress | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [draft, setDraft] = useState<Partial<Property>>(BLANK)
@@ -46,14 +56,24 @@ export default function BorrowerPropertiesPage() {
   const [requestLoanPropId, setRequestLoanPropId] = useState<string | null>(null)
 
   async function load() {
-    const [propsRes, loansRes] = await Promise.all([
+    const [propsRes, loansRes, profileRes] = await Promise.all([
       fetch('/api/borrower/properties'),
       fetch('/api/borrower/loans'),
+      fetch('/api/borrower/profile'),
     ])
     const propsData = await propsRes.json()
     const loansData = await loansRes.json()
+    const profileData = await profileRes.json()
     setProperties(Array.isArray(propsData) ? propsData : [])
     setLoans(Array.isArray(loansData) ? loansData : [])
+    if (profileData?.home_address_street) {
+      setHome({
+        street: profileData.home_address_street,
+        city: profileData.home_address_city,
+        state: profileData.home_address_state,
+        zip: profileData.home_address_zip,
+      })
+    }
     setLoading(false)
   }
 
@@ -164,11 +184,37 @@ export default function BorrowerPropertiesPage() {
         </div>
       )}
 
+      {/* Primary residence — from profile, not eligible for financing */}
+      {home && (
+        <div className="mb-3 bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="flex items-stretch">
+            <StreetView street={home.street} city={home.city} state={home.state} zip={home.zip}
+              width={300} height={300} className="w-32 sm:w-40 flex-shrink-0 object-cover self-stretch" />
+            <div className="p-4 flex flex-col justify-between flex-1 min-w-0">
+              <div>
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <p className="font-semibold text-gray-900 text-sm leading-snug">
+                    {[home.street, home.city, home.state, home.zip].filter(Boolean).join(', ')}
+                  </p>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex-shrink-0">
+                    Primary Residence
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 italic">Not eligible for SAK Lending financing.</p>
+              </div>
+              <a href="/borrower/profile" className="text-xs text-[#003087] hover:underline mt-2 self-start">
+                Edit in profile →
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-3">
         {properties.map((prop) => (
-          <div key={prop.id} className="bg-white rounded-xl border border-gray-200 p-5">
+          <div key={prop.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {editingId === prop.id ? (
-              <>
+              <div className="p-5">
                 <PropertyForm draft={editDraft} onChange={setEditDraft} />
                 <div className="flex gap-2 mt-4">
                   <button onClick={() => saveEdit(prop.id)} disabled={saving}
@@ -180,95 +226,108 @@ export default function BorrowerPropertiesPage() {
                     Cancel
                   </button>
                 </div>
-              </>
+              </div>
             ) : (
               <>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-gray-900">
-                      {[prop.address_street, prop.address_city, prop.address_state, prop.address_zip]
-                        .filter(Boolean).join(', ') || 'Address not on file'}
-                    </p>
-                    {prop.property_type && (
-                      <p className="text-sm text-gray-500 mt-0.5">{prop.property_type}</p>
-                    )}
-                  </div>
-                  <div className="flex gap-2 flex-shrink-0">
-                    <button onClick={() => { setEditingId(prop.id); setEditDraft(prop) }}
-                      className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2 py-1 rounded">
-                      Edit
-                    </button>
-                    {propertyHasLoans(prop) ? (
-                      <span
-                        title="Cannot remove a property with an active loan"
-                        className="text-xs text-gray-300 border border-gray-100 px-2 py-1 rounded cursor-not-allowed">
-                        Remove
-                      </span>
-                    ) : (
-                      <button onClick={() => deleteProperty(prop.id)}
-                        className="text-xs text-red-400 hover:text-red-600 border border-red-100 px-2 py-1 rounded">
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {prop.date_acquired && <Stat label="Acquired" value={new Date(prop.date_acquired + 'T00:00:00').toLocaleDateString()} />}
-                  {prop.purchase_price && <Stat label="Purchase Price" value={fmt$(prop.purchase_price)!} />}
-                  {prop.mortgage_holder && <Stat label="Lender" value={prop.mortgage_holder} />}
-                  {prop.mortgage_balance && <Stat label="Balance" value={fmt$(prop.mortgage_balance)!} />}
-                  {prop.monthly_payment && <Stat label="Monthly Payment" value={fmt$(prop.monthly_payment)!} />}
-                  {prop.interest_rate && <Stat label="Rate" value={`${prop.interest_rate}%`} />}
-                  {prop.loan_maturity_date && <Stat label="Loan Due" value={new Date(prop.loan_maturity_date + 'T00:00:00').toLocaleDateString()} />}
-                </div>
-                {prop.notes && (
-                  <p className="text-xs text-gray-400 mt-3 italic">{prop.notes}</p>
-                )}
-                {(() => {
-                  const linked = loans.filter(
-                    (l) =>
-                      l.property_id === prop.id ||
-                      (l.address_street &&
-                        prop.address_street &&
-                        l.address_street.toLowerCase() === prop.address_street.toLowerCase() &&
-                        l.address_city?.toLowerCase() === prop.address_city?.toLowerCase())
-                  )
-                  return (
-                    <div className="mt-3">
-                      {linked.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {linked.map((l) => (
-                            <Link
-                              key={l.id}
-                              href={`/borrower/loans/${l.id}`}
-                              className="inline-flex items-center gap-1 text-xs text-[#003087] border border-[#003087] px-2 py-1 rounded hover:bg-blue-50"
-                            >
-                              {l.loan_program
-                                ? l.loan_program.charAt(0).toUpperCase() + l.loan_program.slice(1)
-                                : 'Loan'}{' '}
-                              — {l.stage}
-                            </Link>
-                          ))}
-                        </div>
-                      )}
-                      {requestLoanPropId === prop.id ? (
-                        <RequestLoanForm
-                          properties={properties}
-                          prefillPropertyId={prop.id}
-                          onCancel={() => setRequestLoanPropId(null)}
-                          onSuccess={() => setRequestLoanPropId(null)}
-                        />
-                      ) : (
-                        <button
-                          onClick={() => { setRequestLoanPropId(prop.id); setShowAdd(false) }}
-                          className="text-xs text-[#003087] border border-[#003087] px-2 py-1 rounded hover:bg-blue-50"
-                        >
-                          + Request Loan
+                {/* Square-left image + details layout */}
+                <div className="flex items-stretch">
+                  <StreetView
+                    street={prop.address_street}
+                    city={prop.address_city}
+                    state={prop.address_state}
+                    zip={prop.address_zip}
+                    width={300}
+                    height={300}
+                    className="w-32 sm:w-40 flex-shrink-0 object-cover self-stretch"
+                  />
+                  <div className="p-4 flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm leading-snug">
+                          {[prop.address_street, prop.address_city, prop.address_state, prop.address_zip]
+                            .filter(Boolean).join(', ') || 'Address not on file'}
+                        </p>
+                        {prop.property_type && (
+                          <p className="text-xs text-gray-500 mt-0.5">{prop.property_type}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {prop.property_use === 'second_home' && (
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                            Second Home
+                          </span>
+                        )}
+                        <button onClick={() => { setEditingId(prop.id); setEditDraft(prop) }}
+                          className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2 py-1 rounded">
+                          Edit
                         </button>
-                      )}
+                        {propertyHasLoans(prop) ? (
+                          <span title="Cannot remove a property with an active loan"
+                            className="text-xs text-gray-300 border border-gray-100 px-2 py-1 rounded cursor-not-allowed">
+                            Remove
+                          </span>
+                        ) : (
+                          <button onClick={() => deleteProperty(prop.id)}
+                            className="text-xs text-red-400 hover:text-red-600 border border-red-100 px-2 py-1 rounded">
+                            Remove
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  )
-                })()}
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
+                      {prop.purchase_price && <Stat label="Purchase Price" value={fmt$(prop.purchase_price)!} />}
+                      {prop.mortgage_balance && <Stat label="Balance" value={fmt$(prop.mortgage_balance)!} />}
+                      {prop.interest_rate && <Stat label="Rate" value={`${prop.interest_rate}%`} />}
+                      {prop.loan_maturity_date && <Stat label="Loan Due" value={new Date(prop.loan_maturity_date + 'T00:00:00').toLocaleDateString()} />}
+                    </div>
+
+                    {(() => {
+                      const linked = loans.filter(
+                        (l) =>
+                          l.property_id === prop.id ||
+                          (l.address_street && prop.address_street &&
+                            l.address_street.toLowerCase() === prop.address_street.toLowerCase() &&
+                            l.address_city?.toLowerCase() === prop.address_city?.toLowerCase())
+                      )
+                      const hasActiveLoan = linked.some(l => l.stage !== 'funded')
+                      return (
+                        <div className="mt-3">
+                          {linked.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {linked.map((l) => (
+                                <Link key={l.id} href={`/borrower/loans/${l.id}`}
+                                  className="inline-flex items-center gap-1 text-xs text-[#003087] border border-[#003087] px-2 py-1 rounded hover:bg-blue-50">
+                                  {l.loan_program
+                                    ? l.loan_program.charAt(0).toUpperCase() + l.loan_program.slice(1)
+                                    : 'Loan'}{' '}— {l.stage}
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                          {prop.property_use === 'second_home' ? (
+                            <p className="text-xs text-gray-400 italic">Not eligible for SAK Lending financing.</p>
+                          ) : hasActiveLoan ? (
+                            <p className="text-xs text-gray-400 italic">Loan in progress.</p>
+                          ) : requestLoanPropId === prop.id ? (
+                            <RequestLoanForm
+                              properties={properties.filter(p => p.property_use !== 'second_home')}
+                              prefillPropertyId={prop.id}
+                              onCancel={() => setRequestLoanPropId(null)}
+                              onSuccess={() => setRequestLoanPropId(null)}
+                            />
+                          ) : (
+                            <button
+                              onClick={() => { setRequestLoanPropId(prop.id); setShowAdd(false) }}
+                              className="text-xs text-[#003087] border border-[#003087] px-2 py-1 rounded hover:bg-blue-50">
+                              + Request Loan
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })()}
+                  </div>
+                </div>
               </>
             )}
           </div>
@@ -295,6 +354,14 @@ function PropertyForm({ draft, onChange }: { draft: Partial<Property>; onChange:
           <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Street Address <span className="text-red-400">*</span></label>
           <input required value={draft.address_street ?? ''} onChange={set('address_street')}
             className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Property Use</label>
+          <select value={draft.property_use ?? 'investment'} onChange={set('property_use')}
+            className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]">
+            <option value="investment">Investment / Commercial</option>
+            <option value="second_home">Second Home</option>
+          </select>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">City</label>

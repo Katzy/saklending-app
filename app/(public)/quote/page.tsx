@@ -23,8 +23,12 @@ const PROPERTY_TYPES = [
 ]
 
 const LOAN_TYPES = [
-  'New Purchase','Ground Up Construction','Fix and Flip','SBA','Bridge Loan',
-  'Private Money','Refinance',
+  'Purchase (5 – 30 yr)',
+  'Refinance (5 – 30 yr)',
+  'Ground-Up Construction (12 – 36 mo)',
+  'Bridge (6 mo – 3 yr)',
+  'Small Balance DSCR (5 – 30 yr)',
+  'CMBS (5 – 10 yr)',
 ]
 
 function getThankYouMessage() {
@@ -39,7 +43,7 @@ function getThankYouMessage() {
 export default function QuotePage() {
   const [form, setForm] = useState({
     firstName: '', lastName: '', phone: '', email: '',
-    loanAmount: '', propertyType: '', loanType: '', state: '', comments: '',
+    loanAmount: '', propertyValue: '', noi: '', propertyType: '', loanType: '', state: '', comments: '',
   })
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
 
@@ -72,7 +76,7 @@ export default function QuotePage() {
           <p className="text-gray-600 mt-1">{getThankYouMessage()}</p>
           <p className="text-gray-500 text-sm mt-1">— SAK Lending Team</p>
           <button
-            onClick={() => { setStatus('idle'); setForm({ firstName:'',lastName:'',phone:'',email:'',loanAmount:'',propertyType:'',loanType:'',state:'',comments:'' }) }}
+            onClick={() => { setStatus('idle'); setForm({ firstName:'',lastName:'',phone:'',email:'',loanAmount:'',propertyValue:'',noi:'',propertyType:'',loanType:'',state:'',comments:'' }) }}
             className="mt-6 text-[#003087] text-sm underline"
           >
             Submit another request
@@ -118,6 +122,16 @@ export default function QuotePage() {
             <div>
               <label className="block text-sm font-medium mb-1">Loan Amount *</label>
               <input required type="number" min="0" value={form.loanAmount} onChange={set('loanAmount')}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#003087]" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Property Value</label>
+              <input type="number" min="0" value={form.propertyValue} onChange={set('propertyValue')} placeholder="Purchase price or current value"
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#003087]" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">NOI</label>
+              <input type="number" min="0" value={form.noi} onChange={set('noi')} placeholder="Net operating income"
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#003087]" />
             </div>
             <div>

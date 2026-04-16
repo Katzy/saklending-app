@@ -3,8 +3,10 @@ import { createServiceClient } from '@/lib/supabase/server'
 import nodemailer from 'nodemailer'
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+  host: 'smtp.resend.com',
+  port: 465,
+  secure: true,
+  auth: { user: 'resend', pass: process.env.RESEND_API_KEY },
 })
 
 export async function POST(req: NextRequest) {
@@ -49,7 +51,7 @@ export async function POST(req: NextRequest) {
       let emailSent = false
       try {
         await transporter.sendMail({
-          from: `"SAK Lending" <${process.env.EMAIL_USER}>`,
+          from: '"SAK Lending" <support@saklending.com>',
           to: email,
           subject: 'Your SAK Lending Portal Link',
           html: `

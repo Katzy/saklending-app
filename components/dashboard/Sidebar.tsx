@@ -11,7 +11,12 @@ const NAV = [
   { href: '/dashboard/contacts',  label: 'Contacts',  icon: '👥' },
 ]
 
-export default function Sidebar() {
+type SidebarProps = {
+  open?: boolean
+  onClose?: () => void
+}
+
+export default function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -22,14 +27,32 @@ export default function Sidebar() {
     router.refresh()
   }
 
+  const handleNavClick = () => {
+    onClose?.()
+  }
+
   return (
-    <aside className="fixed top-0 left-0 h-full w-56 bg-[#003087] flex flex-col z-40">
+    <aside className={`
+      fixed top-0 left-0 h-full w-56 bg-[#003087] flex flex-col z-40
+      transition-transform duration-200
+      md:translate-x-0
+      ${open ? 'translate-x-0' : '-translate-x-full'}
+    `}>
       {/* Logo */}
-      <div className="px-4 py-5 border-b border-blue-800">
-        <Link href="/dashboard">
+      <div className="px-4 py-5 border-b border-blue-800 flex items-center justify-between">
+        <Link href="/dashboard" onClick={handleNavClick}>
           <Image src="/logo.jpg" alt="SAK Lending" width={120} height={44} className="h-10 w-auto brightness-0 invert" />
         </Link>
-        <p className="text-blue-300 text-xs mt-1">Dashboard</p>
+        {/* Close button — mobile only */}
+        <button
+          onClick={onClose}
+          className="md:hidden text-blue-300 hover:text-white p-1"
+          aria-label="Close menu"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       {/* Nav links */}
@@ -40,6 +63,7 @@ export default function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={handleNavClick}
               className={`flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-colors ${
                 active
                   ? 'bg-white text-[#003087]'

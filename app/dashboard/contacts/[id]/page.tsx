@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { toast } from 'sonner'
+import StreetView from '@/components/StreetView'
 
 type Contact = {
   id: string
@@ -265,7 +267,7 @@ export default function ContactDetailPage() {
                 className="flex-1 bg-white border border-green-300 rounded px-2 py-1 text-xs text-gray-700 font-mono"
               />
               <button
-                onClick={() => { navigator.clipboard.writeText(magicLink); alert('Link copied!') }}
+                onClick={() => { navigator.clipboard.writeText(magicLink); toast.success('Link copied!') }}
                 className="text-xs bg-green-700 text-white px-2 py-1 rounded hover:bg-green-800"
               >
                 Copy
@@ -354,10 +356,28 @@ export default function ContactDetailPage() {
         )}
 
         <div className="space-y-3">
-          {properties.filter(p => !p.deleted_at).map((prop) => (
+          {properties.filter(p => !p.deleted_at).map((prop) => {
+            const linkedLoans = loans.filter(l =>
+              l.property_id === prop.id ||
+              (l.address_street && prop.address_street &&
+                l.address_street.trim().toLowerCase() === prop.address_street.trim().toLowerCase())
+            )
+            const hasActiveLoan = linkedLoans.some(l => !l.is_dead && l.stage !== 'funded')
+            return (
             <div key={prop.id} className="border border-gray-200 rounded-lg overflow-hidden">
               {/* Card header — always visible */}
-              <div className="flex items-start justify-between gap-3 p-4">
+              <div className="flex items-stretch">
+                <StreetView
+                  street={prop.address_street}
+                  city={prop.address_city}
+                  state={prop.address_state}
+                  zip={prop.address_zip}
+                  width={200}
+                  height={200}
+                  className="w-24 flex-shrink-0 object-cover self-stretch"
+                />
+                <div className="flex-1 min-w-0 p-4">
+                <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900">
                     {[prop.address_street, prop.address_city, prop.address_state, prop.address_zip]
@@ -373,21 +393,20 @@ export default function ContactDetailPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {/* Loans tied to this property — by property_id or matching street address */}
-                  {loans.filter(l =>
-                    l.property_id === prop.id ||
-                    (l.address_street && prop.address_street &&
-                      l.address_street.trim().toLowerCase() === prop.address_street.trim().toLowerCase())
-                  ).map(l => (
+                  {linkedLoans.map(l => (
                     <Link key={l.id} href={`/dashboard/loans/${l.id}`}
                       className="border border-[#003087] text-[#003087] px-3 py-1.5 rounded text-xs font-medium hover:bg-blue-50 whitespace-nowrap">
                       {l.loan_program ? l.loan_program.replace('_', ' ') : (l.address_city || 'Loan')} ↗
                     </Link>
                   ))}
-                  <Link href={newLoanFromProperty(prop)}
-                    className="bg-[#003087] text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-[#002070] whitespace-nowrap">
-                    + New Loan
-                  </Link>
+                  {hasActiveLoan ? (
+                    <span className="text-xs text-gray-400 italic px-1">Loan in progress</span>
+                  ) : (
+                    <Link href={newLoanFromProperty(prop)}
+                      className="bg-[#003087] text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-[#002070] whitespace-nowrap">
+                      + New Loan
+                    </Link>
+                  )}
                   <button
                     onClick={() => {
                       if (editingPropId === prop.id) {
@@ -405,6 +424,8 @@ export default function ContactDetailPage() {
                     className="text-gray-300 hover:text-red-400 text-sm px-1" title="Remove">
                     ✕
                   </button>
+                </div>
+                </div>
                 </div>
               </div>
 
@@ -502,7 +523,7 @@ export default function ContactDetailPage() {
                 </div>
               )}
             </div>
-          ))}
+          )})}
         </div>
 
         {/* Add property form */}

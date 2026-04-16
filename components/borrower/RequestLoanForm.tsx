@@ -32,6 +32,8 @@ export default function RequestLoanForm({ properties, prefillPropertyId, onCance
   const [loanPurpose, setLoanPurpose] = useState('')
   const [loanProgram, setLoanProgram] = useState('')
   const [loanAmount, setLoanAmount] = useState('')
+  const [propertyValue, setPropertyValue] = useState('')
+  const [noi, setNoi] = useState('')
   const [street, setStreet] = useState('')
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
@@ -68,6 +70,8 @@ export default function RequestLoanForm({ properties, prefillPropertyId, onCance
         loan_purpose:   loanPurpose  || null,
         loan_program:   loanProgram  || null,
         loan_amount:    loanAmount   ? Number(loanAmount) : null,
+        purchase_price: propertyValue ? Number(propertyValue) : null,
+        noi:            noi ? Number(noi) : null,
         property_type:  selectedProp ? selectedProp.property_type : null,
         address_street: addressStreet,
         address_city:   addressCity,
@@ -85,7 +89,10 @@ export default function RequestLoanForm({ properties, prefillPropertyId, onCance
 
   return (
     <div className="bg-white rounded-xl border border-[#003087] p-6 mb-4">
-      <h2 className="text-sm font-semibold text-gray-700 mb-4">Request a Loan</h2>
+      <h2 className="text-sm font-semibold text-gray-700 mb-1">Request a Loan</h2>
+      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4">
+        SAK Lending finances commercial and investment properties only. Primary residences are not eligible.
+      </p>
       <form onSubmit={handleSubmit} className="space-y-4">
 
         {/* Property selector */}
@@ -164,6 +171,16 @@ export default function RequestLoanForm({ properties, prefillPropertyId, onCance
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Loan Amount (optional)</label>
             <input type="number" value={loanAmount} onChange={(e) => setLoanAmount(e.target.value)} placeholder="e.g. 500000"
+              className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Property Value (optional)</label>
+            <input type="number" value={propertyValue} onChange={(e) => setPropertyValue(e.target.value)} placeholder="Purchase price or current value"
+              className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">NOI (optional)</label>
+            <input type="number" value={noi} onChange={(e) => setNoi(e.target.value)} placeholder="Net operating income"
               className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
           </div>
         </div>

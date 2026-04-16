@@ -2,7 +2,29 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { usePasswordRequired } from '../layout'
+import { usePasswordRequired } from '@/lib/borrower-context'
+
+const STAGES = ['lead', 'qualified', 'application', 'underwriting', 'approved', 'funded']
+const STAGE_LABELS: Record<string, string> = {
+  lead: 'In Review',
+  qualified: 'Qualified',
+  application: 'Application',
+  underwriting: 'Underwriting',
+  approved: 'Approved',
+  funded: 'Funded',
+}
+
+type Loan = {
+  id: string
+  loan_amount: number | null
+  loan_program: string | null
+  loan_purpose: string | null
+  property_type: string | null
+  address_city: string | null
+  address_state: string | null
+  stage: string
+  is_dead: boolean
+}
 
 type Profile = {
   id: string
@@ -14,10 +36,15 @@ type Profile = {
   credit_score_estimate: number | null
   can_provide_tax_returns: boolean | null
   sponsor_bio: string | null
+  home_address_street: string | null
+  home_address_city: string | null
+  home_address_state: string | null
+  home_address_zip: string | null
 }
 
 export default function BorrowerProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [loans, setLoans] = useState<Loan[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Partial<Profile>>({})
@@ -36,12 +63,14 @@ export default function BorrowerProfilePage() {
   const pwSectionRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    fetch('/api/borrower/profile')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d?.id) { setProfile(d); setDraft(d) }
-        setLoading(false)
-      })
+    Promise.all([
+      fetch('/api/borrower/profile').then((r) => r.json()),
+      fetch('/api/borrower/loans').then((r) => r.json()),
+    ]).then(([profileData, loansData]) => {
+      if (profileData?.id) { setProfile(profileData); setDraft(profileData) }
+      setLoans(Array.isArray(loansData) ? loansData.filter((l: Loan) => !l.is_dead) : [])
+      setLoading(false)
+    })
 
     setIsOtp(sessionStorage.getItem('pw_required') === '1')
 
@@ -187,6 +216,80 @@ export default function BorrowerProfilePage() {
           </div>
         )}
       </div>
+
+      {/* Primary Residence */}
+      <div className="mt-4 bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-700">Primary Residence</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Your personal address — not eligible for SAK Lending financing.</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3">
+          <PField label="Street Address" value={profile.home_address_street ?? ''} editValue={draft.home_address_street ?? ''} editing={editing} onChange={(v) => setDraft({ ...draft, home_address_street: v || null })} />
+          <div className="grid grid-cols-3 gap-3">
+            <PField label="City" value={profile.home_address_city ?? ''} editValue={draft.home_address_city ?? ''} editing={editing} onChange={(v) => setDraft({ ...draft, home_address_city: v || null })} />
+            <PField label="State" value={profile.home_address_state ?? ''} editValue={draft.home_address_state ?? ''} editing={editing} onChange={(v) => setDraft({ ...draft, home_address_state: v || null })} />
+            <PField label="Zip" value={profile.home_address_zip ?? ''} editValue={draft.home_address_zip ?? ''} editing={editing} onChange={(v) => setDraft({ ...draft, home_address_zip: v || null })} />
+          </div>
+        </div>
+      </div>
+
+      {/* Loan Pipeline Status */}
+      {loans.length > 0 && (
+        <div className="mt-6">
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Loan Status</h2>
+          <div className="space-y-4">
+            {loans.map((loan) => {
+              const currentIdx = STAGES.indexOf(loan.stage)
+              const label = loan.address_city
+                ? `${loan.address_city}, ${loan.address_state ?? ''}`
+                : loan.property_type ?? 'Loan'
+              return (
+                <div key={loan.id} className="bg-white rounded-xl border border-gray-200 p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">{label}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 capitalize">
+                        {[loan.loan_program?.replace(/_/g, ' '), loan.loan_purpose].filter(Boolean).join(' · ')}
+                        {loan.loan_amount ? ` · $${Number(loan.loan_amount).toLocaleString()}` : ''}
+                      </p>
+                    </div>
+                    <span className="text-xs font-semibold text-[#003087] bg-blue-50 px-2.5 py-1 rounded-full">
+                      {STAGE_LABELS[loan.stage] ?? loan.stage}
+                    </span>
+                  </div>
+                  {/* Progress steps */}
+                  <div className="flex items-center gap-0">
+                    {STAGES.map((stage, idx) => {
+                      const done = idx < currentIdx
+                      const active = idx === currentIdx
+                      const isLast = idx === STAGES.length - 1
+                      return (
+                        <div key={stage} className="flex items-center flex-1 last:flex-none">
+                          <div className="flex flex-col items-center">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                              done   ? 'bg-[#003087] text-white' :
+                              active ? 'bg-[#003087] text-white ring-4 ring-blue-100' :
+                                       'bg-gray-100 text-gray-400'
+                            }`}>
+                              {done ? '✓' : idx + 1}
+                            </div>
+                            <p className={`text-[10px] mt-1 text-center leading-tight ${active ? 'text-[#003087] font-semibold' : 'text-gray-400'}`}>
+                              {STAGE_LABELS[stage]}
+                            </p>
+                          </div>
+                          {!isLast && (
+                            <div className={`flex-1 h-0.5 mb-4 mx-1 ${idx < currentIdx ? 'bg-[#003087]' : 'bg-gray-200'}`} />
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Set / Change Password (always shown at bottom for returning users) */}
       {!isOtp && !pwDone && <PasswordCard pwSectionRef={pwSectionRef} newPassword={newPassword} setNewPassword={setNewPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} pwSaving={pwSaving} pwMsg={pwMsg} onSave={setPassword} />}
