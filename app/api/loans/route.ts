@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('loans')
     .select(
-      'id, created_at, contact_id, property_id, loan_amount, loan_purpose, loan_program, property_type, address_street, address_city, address_state, stage, is_dead, dead_reason, stage_updated_at',
+      'id, created_at, contact_id, property_id, loan_amount, loan_purpose, loan_program, property_type, address_street, address_city, address_state, address_zip, stage, is_dead, dead_reason, stage_updated_at',
       { count: 'exact' }
     )
     .order('created_at', { ascending: false })

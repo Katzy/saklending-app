@@ -11,6 +11,7 @@ type Loan = {
   loan_purpose: string | null
   loan_program: string | null
   property_type: string | null
+  address_street: string | null
   address_city: string | null
   address_state: string | null
   stage: string
@@ -45,6 +46,7 @@ function fmt(amount: number | null) {
 
 export default function PipelinePage() {
   const [loans, setLoans] = useState<Loan[]>([])
+  const [contactMap, setContactMap] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [showDead, setShowDead] = useState(false)
   const [dragOverStage, setDragOverStage] = useState<string | null>(null)
@@ -53,7 +55,20 @@ export default function PipelinePage() {
   useEffect(() => {
     fetch('/api/loans?page=1')
       .then((r) => r.json())
-      .then((json) => { setLoans(json.data ?? []); setLoading(false) })
+      .then(async (json) => {
+        const data: Loan[] = json.data ?? []
+        setLoans(data)
+        // Fetch borrower last names
+        const ids = [...new Set(data.map((l) => l.contact_id).filter(Boolean))]
+        if (ids.length) {
+          const res = await fetch(`/api/contacts?page=1&limit=500`)
+          const cj = await res.json()
+          const map: Record<string, string> = {}
+          for (const c of (cj.data ?? [])) map[c.id] = c.last_name
+          setContactMap(map)
+        }
+        setLoading(false)
+      })
   }, [])
 
   const active = loans.filter((l) => !l.is_dead)
@@ -170,10 +185,11 @@ export default function PipelinePage() {
                           }}
                           className="block bg-white rounded border border-gray-200 p-3 hover:border-[#003087] hover:shadow-sm transition text-sm select-none"
                         >
-                          <p className="font-medium text-gray-900 truncate">
-                            {loan.address_city
-                              ? `${loan.address_city}, ${loan.address_state ?? ''}`
-                              : (loan.property_type ?? 'Loan')}
+                          <p className="font-medium text-gray-900 truncate text-xs">
+                            {loan.address_street ?? loan.address_city ?? loan.property_type ?? 'Loan'}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {[loan.address_city, loan.address_state].filter(Boolean).join(', ')}
                           </p>
                           {loan.loan_amount && (
                             <p className="text-[#003087] font-semibold mt-0.5">{fmt(loan.loan_amount)}</p>
@@ -181,6 +197,9 @@ export default function PipelinePage() {
                           <p className="text-xs text-gray-400 mt-1 capitalize">
                             {[loan.loan_program, loan.loan_purpose].filter(Boolean).join(' · ')}
                           </p>
+                          {contactMap[loan.contact_id] && (
+                            <p className="text-xs text-gray-400 truncate">{contactMap[loan.contact_id]}</p>
+                          )}
                         </Link>
                       </div>
                     ))}
@@ -216,9 +235,7 @@ export default function PipelinePage() {
                       <tr key={loan.id} className="border-t border-gray-100 hover:bg-gray-50">
                         <td className="px-4 py-2">
                           <Link href={`/dashboard/loans/${loan.id}`} className="text-[#003087] hover:underline">
-                            {loan.address_city
-                              ? `${loan.address_city}, ${loan.address_state ?? ''}`
-                              : (loan.property_type ?? 'Loan')}
+                            {loan.address_street ?? loan.address_city ?? loan.property_type ?? 'Loan'}
                           </Link>
                         </td>
                         <td className="px-4 py-2 text-gray-700">{fmt(loan.loan_amount) ?? '—'}</td>
