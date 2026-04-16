@@ -404,7 +404,7 @@ export default function ContactDetailPage() {
                   <div className="flex flex-wrap gap-3 mt-1 text-xs text-gray-500">
                     {prop.property_type && <span>{prop.property_type}</span>}
                     {prop.mortgage_holder && <span>Bank: {prop.mortgage_holder}</span>}
-                    {prop.mortgage_balance && <span>Balance: ${Number(prop.mortgage_balance).toLocaleString()}</span>}
+                    {!!prop.mortgage_balance && <span>Balance: ${Number(prop.mortgage_balance).toLocaleString()}</span>}
                     {prop.monthly_payment && <span>Pmt: ${Number(prop.monthly_payment).toLocaleString()}/mo</span>}
                     {prop.interest_rate && <span>Rate: {prop.interest_rate}%</span>}
                     {prop.loan_maturity_date && <span>Due: {new Date(prop.loan_maturity_date + 'T00:00:00').toLocaleDateString()}</span>}
@@ -662,7 +662,7 @@ export default function ContactDetailPage() {
                     {prop.date_acquired && <span>Acquired: {new Date(prop.date_acquired + 'T00:00:00').toLocaleDateString()}</span>}
                     {prop.purchase_price && <span>Purchase: ${Number(prop.purchase_price).toLocaleString()}</span>}
                     {prop.mortgage_holder && <span>Lender: {prop.mortgage_holder}</span>}
-                    {prop.mortgage_balance && <span>Balance: ${Number(prop.mortgage_balance).toLocaleString()}</span>}
+                    {!!prop.mortgage_balance && <span>Balance: ${Number(prop.mortgage_balance).toLocaleString()}</span>}
                     {prop.monthly_payment && <span>Payment: ${Number(prop.monthly_payment).toLocaleString()}/mo</span>}
                     {prop.interest_rate && <span>Rate: {prop.interest_rate}%</span>}
                     {prop.loan_maturity_date && <span>Due: {new Date(prop.loan_maturity_date + 'T00:00:00').toLocaleDateString()}</span>}
