@@ -23,6 +23,10 @@ type Contact = {
   co_borrower_last_name: string | null
   co_borrower_email: string | null
   co_borrower_phone: string | null
+  home_address_street: string | null
+  home_address_city: string | null
+  home_address_state: string | null
+  home_address_zip: string | null
 }
 
 type Property = {
@@ -305,6 +309,19 @@ export default function ContactDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Home Address */}
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Home / Primary Address</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <Field label="Street" value={contact.home_address_street ?? ''} editValue={editData.home_address_street ?? ''} editing={editing} onChange={(v) => setEditData({ ...editData, home_address_street: v || null })} />
+            </div>
+            <Field label="City" value={contact.home_address_city ?? ''} editValue={editData.home_address_city ?? ''} editing={editing} onChange={(v) => setEditData({ ...editData, home_address_city: v || null })} />
+            <Field label="State" value={contact.home_address_state ?? ''} editValue={editData.home_address_state ?? ''} editing={editing} onChange={(v) => setEditData({ ...editData, home_address_state: v || null })} />
+            <Field label="Zip" value={contact.home_address_zip ?? ''} editValue={editData.home_address_zip ?? ''} editing={editing} onChange={(v) => setEditData({ ...editData, home_address_zip: v || null })} />
+          </div>
+        </div>
 
         <div className="mt-4">
           <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Source</label>

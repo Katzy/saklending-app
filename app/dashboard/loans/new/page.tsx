@@ -44,14 +44,15 @@ function NewLoanPage() {
   const [loanAmount, setLoanAmount] = useState('')
   const [propertyValue, setPropertyValue] = useState('')
   const [interestRate, setInterestRate] = useState('')
-  const [loanTermYears, setLoanTermYears] = useState('')
+  const [fixedTerm, setFixedTerm] = useState('')       // 1, 5, 10 yr fixed
+  const [amortYears, setAmortYears] = useState('')     // 20, 25, 30 yr amortization
   const [interestOnly, setInterestOnly] = useState(false)
 
   // Derived calculations
-  const loanNum = parseFloat(loanAmount) || 0
-  const propNum = parseFloat(propertyValue) || 0
-  const rateNum = parseFloat(interestRate) || 0
-  const termNum = parseInt(loanTermYears) || 0
+  const loanNum  = parseFloat(loanAmount) || 0
+  const propNum  = parseFloat(propertyValue) || 0
+  const rateNum  = parseFloat(interestRate) || 0
+  const amortNum = parseInt(amortYears) || 0
 
   const ltv = loanNum && propNum ? ((loanNum / propNum) * 100).toFixed(1) + '%' : null
 
@@ -59,8 +60,8 @@ function NewLoanPage() {
     if (!loanNum || !rateNum) return null
     const monthlyRate = rateNum / 100 / 12
     if (interestOnly) return loanNum * monthlyRate
-    if (!termNum) return null
-    const n = termNum * 12
+    if (!amortNum) return null
+    const n = amortNum * 12
     return loanNum * (monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1)
   }
   const monthlyPayment = calcMonthlyPayment()
@@ -97,7 +98,8 @@ function NewLoanPage() {
       loan_amount:             loanNum || null,
       purchase_price:          propNum || null,
       interest_rate:           rateNum || null,
-      loan_term_years:         termNum || null,
+      loan_term_years:         fixedTerm ? parseInt(fixedTerm) : null,
+      amortization_years:      amortNum || null,
       interest_only:           interestOnly,
       loan_purpose:            get('loan_purpose'),
       loan_program:            get('loan_program'),
@@ -211,24 +213,36 @@ function NewLoanPage() {
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Term</label>
-            <select value={loanTermYears} onChange={(e) => setLoanTermYears(e.target.value)}
+            <label className="block text-sm font-medium text-gray-700 mb-1">Fixed Term</label>
+            <select value={fixedTerm} onChange={(e) => setFixedTerm(e.target.value)}
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]">
               <option value="">— Select —</option>
-              {[1, 2, 3, 5, 7, 10, 15, 20, 25, 30].map((y) => (
-                <option key={y} value={y}>{y} {y === 1 ? 'year' : 'years'}</option>
-              ))}
+              <option value="1">1yr Fixed</option>
+              <option value="5">5yr Fixed</option>
+              <option value="10">10yr Fixed</option>
             </select>
           </div>
         </div>
 
-        {/* Interest only + live calculations */}
-        <div className="flex items-center gap-6">
-          <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700">
-            <input type="checkbox" checked={interestOnly} onChange={(e) => setInterestOnly(e.target.checked)}
-              className="rounded border-gray-300 text-[#003087] focus:ring-[#003087]" />
-            Interest Only
-          </label>
+        {/* Amortization + Interest Only */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Amortization</label>
+          <div className="flex items-center gap-4 flex-wrap">
+            {[20, 25, 30].map((y) => (
+              <label key={y} className="flex items-center gap-1.5 cursor-pointer text-sm text-gray-700">
+                <input type="radio" name="amort" value={y} checked={amortYears === String(y)}
+                  onChange={(e) => { setAmortYears(e.target.value); setInterestOnly(false) }}
+                  className="text-[#003087] focus:ring-[#003087]" />
+                {y} yr
+              </label>
+            ))}
+            <label className="flex items-center gap-1.5 cursor-pointer text-sm text-gray-700 ml-2 pl-2 border-l border-gray-200">
+              <input type="checkbox" checked={interestOnly}
+                onChange={(e) => { setInterestOnly(e.target.checked); if (e.target.checked) setAmortYears('') }}
+                className="rounded border-gray-300 text-[#003087] focus:ring-[#003087]" />
+              Interest Only
+            </label>
+          </div>
         </div>
 
         {(ltv || monthlyPayment) && (
