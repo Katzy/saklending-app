@@ -1,12 +1,10 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [status, setStatus] = useState('Signing you in…')
@@ -16,8 +14,6 @@ export default function AuthCallbackPage() {
     const next = searchParams.get('next') ?? '/borrower'
 
     function redirectAfterMagicLink(dest: string) {
-      // Flag that this session came from a magic link so the portal
-      // can require the borrower to set a password before proceeding
       if (dest.startsWith('/borrower')) {
         sessionStorage.setItem('pw_required', '1')
       }
@@ -25,7 +21,6 @@ export default function AuthCallbackPage() {
     }
 
     async function handleCallback() {
-      // PKCE code flow
       const code = searchParams.get('code')
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
@@ -34,7 +29,6 @@ export default function AuthCallbackPage() {
         return
       }
 
-      // Implicit flow — tokens in URL hash
       const hash = window.location.hash.slice(1)
       if (hash) {
         const params = new URLSearchParams(hash)
@@ -54,13 +48,11 @@ export default function AuthCallbackPage() {
         }
       }
 
-      // Error in query params
       if (searchParams.get('error')) {
         setStatus('Link expired or already used. Please request a new one.')
         return
       }
 
-      // Already-established session
       const { data: { session } } = await supabase.auth.getSession()
       if (session) { redirectAfterMagicLink(next); return }
 
@@ -79,5 +71,13 @@ export default function AuthCallbackPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense>
+      <AuthCallbackContent />
+    </Suspense>
   )
 }

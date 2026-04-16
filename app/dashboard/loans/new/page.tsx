@@ -1,8 +1,6 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -16,7 +14,7 @@ const PROPERTY_TYPES = [
 
 type Contact = { id: string; first_name: string; last_name: string; entity_name: string | null }
 
-export default function NewLoanPage() {
+function NewLoanPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const prefillContact      = searchParams.get('contact_id') ?? ''
@@ -233,4 +231,8 @@ export default function NewLoanPage() {
       </form>
     </div>
   )
+}
+
+export default function NewLoanPageWrapper() {
+  return <Suspense><NewLoanPage /></Suspense>
 }
