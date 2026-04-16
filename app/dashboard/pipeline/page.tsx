@@ -59,7 +59,7 @@ export default function PipelinePage() {
         const data: Loan[] = json.data ?? []
         setLoans(data)
         // Fetch borrower last names
-        const ids = [...new Set(data.map((l) => l.contact_id).filter(Boolean))]
+        const ids = Array.from(new Set(data.map((l) => l.contact_id).filter(Boolean)))
         if (ids.length) {
           const res = await fetch(`/api/contacts?page=1&limit=500`)
           const cj = await res.json()
