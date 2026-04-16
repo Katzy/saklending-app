@@ -13,6 +13,12 @@ const PROPERTY_TYPES = [
 ]
 
 type Contact = { id: string; first_name: string; last_name: string; entity_name: string | null }
+type FullContact = Contact & {
+  co_borrower_first_name: string | null
+  co_borrower_last_name: string | null
+  co_borrower_email: string | null
+  co_borrower_phone: string | null
+}
 
 function NewLoanPage() {
   const router = useRouter()
@@ -30,6 +36,7 @@ function NewLoanPage() {
   const [contacts, setContacts] = useState<Contact[]>([])
   const [contactId, setContactId] = useState(prefillContact)
   const [coBorrowerId, setCoBorrowerId] = useState('')
+  const [fullContact, setFullContact] = useState<FullContact | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -39,7 +46,16 @@ function NewLoanPage() {
       .then((j) => setContacts(j.data ?? []))
   }, [])
 
+  // Fetch full contact details (including co-borrower) when contact is selected
+  useEffect(() => {
+    if (!contactId) { setFullContact(null); return }
+    fetch(`/api/contacts/${contactId}`)
+      .then((r) => r.json())
+      .then((j) => setFullContact(j))
+  }, [contactId])
+
   const primaryContact = contacts.find((c) => c.id === contactId)
+  const hasCoBorrower = !!(fullContact?.co_borrower_first_name)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -119,17 +135,23 @@ function NewLoanPage() {
           )}
         </div>
 
-        {/* Co-borrower — always optional */}
+        {/* Co-borrower */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Co-Borrower <span className="text-gray-400 font-normal">(optional)</span>
           </label>
+          {hasCoBorrower && (
+            <div className="mb-2 bg-blue-50 border border-blue-100 rounded px-3 py-2 text-sm text-blue-800">
+              On file: {fullContact!.co_borrower_first_name} {fullContact!.co_borrower_last_name}
+              {fullContact!.co_borrower_email && <span className="text-blue-500 ml-2">· {fullContact!.co_borrower_email}</span>}
+            </div>
+          )}
           <select
             value={coBorrowerId}
             onChange={(e) => setCoBorrowerId(e.target.value)}
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
           >
-            <option value="">— None —</option>
+            <option value="">— None / use contact&apos;s co-borrower on file —</option>
             {contacts
               .filter((c) => c.id !== contactId)
               .map((c) => (
