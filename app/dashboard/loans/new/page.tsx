@@ -40,6 +40,31 @@ function NewLoanPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  // Loan detail state for live calculations
+  const [loanAmount, setLoanAmount] = useState('')
+  const [propertyValue, setPropertyValue] = useState('')
+  const [interestRate, setInterestRate] = useState('')
+  const [loanTermYears, setLoanTermYears] = useState('')
+  const [interestOnly, setInterestOnly] = useState(false)
+
+  // Derived calculations
+  const loanNum = parseFloat(loanAmount) || 0
+  const propNum = parseFloat(propertyValue) || 0
+  const rateNum = parseFloat(interestRate) || 0
+  const termNum = parseInt(loanTermYears) || 0
+
+  const ltv = loanNum && propNum ? ((loanNum / propNum) * 100).toFixed(1) + '%' : null
+
+  function calcMonthlyPayment() {
+    if (!loanNum || !rateNum) return null
+    const monthlyRate = rateNum / 100 / 12
+    if (interestOnly) return loanNum * monthlyRate
+    if (!termNum) return null
+    const n = termNum * 12
+    return loanNum * (monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1)
+  }
+  const monthlyPayment = calcMonthlyPayment()
+
   useEffect(() => {
     fetch('/api/contacts?page=1&limit=500')
       .then((r) => r.json())
@@ -69,7 +94,11 @@ function NewLoanPage() {
       contact_id:              contactId || null,
       property_id:             prefillPropertyId || null,
       co_borrower_contact_id:  coBorrowerId || null,
-      loan_amount:             get('loan_amount') ? Number(get('loan_amount')) : null,
+      loan_amount:             loanNum || null,
+      purchase_price:          propNum || null,
+      interest_rate:           rateNum || null,
+      loan_term_years:         termNum || null,
+      interest_only:           interestOnly,
       loan_purpose:            get('loan_purpose'),
       loan_program:            get('loan_program'),
       financing_preference:    get('financing_preference'),
@@ -165,9 +194,66 @@ function NewLoanPage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Loan Amount</label>
-            <input name="loan_amount" type="number" placeholder="500000"
+            <input type="number" placeholder="500000" value={loanAmount}
+              onChange={(e) => setLoanAmount(e.target.value)}
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Property Value</label>
+            <input type="number" placeholder="Purchase price or value" value={propertyValue}
+              onChange={(e) => setPropertyValue(e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Interest Rate %</label>
+            <input type="number" step="0.01" placeholder="6.75" value={interestRate}
+              onChange={(e) => setInterestRate(e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Term</label>
+            <select value={loanTermYears} onChange={(e) => setLoanTermYears(e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]">
+              <option value="">— Select —</option>
+              {[1, 2, 3, 5, 7, 10, 15, 20, 25, 30].map((y) => (
+                <option key={y} value={y}>{y} {y === 1 ? 'year' : 'years'}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Interest only + live calculations */}
+        <div className="flex items-center gap-6">
+          <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700">
+            <input type="checkbox" checked={interestOnly} onChange={(e) => setInterestOnly(e.target.checked)}
+              className="rounded border-gray-300 text-[#003087] focus:ring-[#003087]" />
+            Interest Only
+          </label>
+        </div>
+
+        {(ltv || monthlyPayment) && (
+          <div className="flex gap-6 bg-gray-50 border border-gray-200 rounded px-4 py-3 text-sm">
+            {ltv && (
+              <div>
+                <span className="text-gray-500">LTV</span>
+                <span className={`ml-2 font-semibold ${parseFloat(ltv) > 80 ? 'text-red-600' : 'text-gray-900'}`}>
+                  {ltv}
+                </span>
+              </div>
+            )}
+            {monthlyPayment && (
+              <div>
+                <span className="text-gray-500">Est. Monthly</span>
+                <span className="ml-2 font-semibold text-gray-900">
+                  ${Math.round(monthlyPayment).toLocaleString()}
+                  {interestOnly && <span className="text-xs text-gray-400 ml-1">(IO)</span>}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Stage</label>
             <select name="stage" defaultValue="lead"
