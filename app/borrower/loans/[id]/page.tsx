@@ -171,12 +171,10 @@ export default function BorrowerLoanDetailPage() {
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <h1 className="text-xl font-bold text-gray-900">
-              {loan.address_city
-                ? `${loan.address_city}, ${loan.address_state ?? ''}`
-                : loan.property_type ?? 'Your Loan'}
+              {loan.address_street ?? loan.address_city ?? loan.property_type ?? 'Your Loan'}
             </h1>
-            {loan.address_street && (
-              <p className="text-sm text-gray-500 mt-0.5">{loan.address_street}{loan.address_zip ? `, ${loan.address_zip}` : ''}</p>
+            {(loan.address_city || loan.address_state) && (
+              <p className="text-sm text-gray-500 mt-0.5">{[loan.address_city, loan.address_state, loan.address_zip].filter(Boolean).join(', ')}</p>
             )}
           </div>
           <span className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize flex-shrink-0 ${STAGE_COLORS[loan.stage] ?? 'bg-gray-100 text-gray-600'}`}>
