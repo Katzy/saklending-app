@@ -25,7 +25,7 @@ function buildUrl(
   // Normalize range addresses like "468-470 Thames St" → "468 Thames St"
   const normalizedStreet = street.replace(/^(\d+)-\d+/, '$1')
   const address = [normalizedStreet, city, state, zip].filter(Boolean).join(', ')
-  return `https://maps.googleapis.com/maps/api/streetview?size=${width}x${height}&location=${encodeURIComponent(address)}&key=${key}&return_error_code=true`
+  return `https://maps.googleapis.com/maps/api/streetview?size=${width}x${height}&location=${encodeURIComponent(address)}&key=${key}`
 }
 
 export default function StreetView({ street, city, state, zip, width = 640, height = 400, className = '' }: Props) {
