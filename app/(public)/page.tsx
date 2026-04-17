@@ -14,6 +14,7 @@ type ClosedLoan = {
   address_city: string | null
   address_state: string | null
   address_zip: string | null
+  image_url: string | null
 }
 
 function streetViewUrl(loan: ClosedLoan) {
@@ -224,10 +225,10 @@ export default function HomePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
               {closedLoans.map((loan) => (
                 <div key={loan.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                  {streetViewUrl(loan) ? (
+                  {(loan.image_url || streetViewUrl(loan)) ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={streetViewUrl(loan)!}
+                      src={loan.image_url ?? streetViewUrl(loan)!}
                       alt={loan.address_city ?? 'Property'}
                       className="h-44 w-full object-cover"
                       onError={(e) => {
@@ -237,7 +238,7 @@ export default function HomePage() {
                       }}
                     />
                   ) : null}
-                  <div className={`h-44 bg-gradient-to-br from-[#003087] to-[#0050c8] flex items-center justify-center ${streetViewUrl(loan) ? 'hidden' : ''}`}>
+                  <div className={`h-44 bg-gradient-to-br from-[#003087] to-[#0050c8] flex items-center justify-center ${(loan.image_url || streetViewUrl(loan)) ? 'hidden' : ''}`}>
                     <span className="text-white text-4xl opacity-30">🏢</span>
                   </div>
                   <div className="p-4">

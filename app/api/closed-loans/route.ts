@@ -10,7 +10,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('loans')
-    .select('id, loan_amount, loan_purpose, loan_program, property_type, address_street, address_city, address_state, address_zip')
+    .select('id, loan_amount, loan_purpose, loan_program, property_type, address_street, address_city, address_state, address_zip, property_image_path')
     .eq('stage', 'funded')
     .gte('loan_amount', 250000)
     .order('stage_updated_at', { ascending: false })
@@ -18,7 +18,21 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json(data ?? [], {
+  // Generate signed URLs for uploaded images
+  const loans = await Promise.all(
+    (data ?? []).map(async (loan) => {
+      let image_url: string | null = null
+      if (loan.property_image_path) {
+        const { data: signed } = await supabase.storage
+          .from('loan-documents')
+          .createSignedUrl(loan.property_image_path, 60 * 60 * 24)
+        image_url = signed?.signedUrl ?? null
+      }
+      return { ...loan, image_url }
+    })
+  )
+
+  return NextResponse.json(loans, {
     headers: { 'Cache-Control': 'no-store' },
   })
 }
