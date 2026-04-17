@@ -20,8 +20,10 @@ type Loan = {
   loan_program: string | null
   loan_purpose: string | null
   property_type: string | null
+  address_street: string | null
   address_city: string | null
   address_state: string | null
+  address_zip: string | null
   stage: string
   is_dead: boolean
 }
@@ -240,14 +242,19 @@ export default function BorrowerProfilePage() {
           <div className="space-y-4">
             {loans.map((loan) => {
               const currentIdx = STAGES.indexOf(loan.stage)
-              const label = loan.address_city
-                ? `${loan.address_city}, ${loan.address_state ?? ''}`
-                : loan.property_type ?? 'Loan'
+              const label = loan.address_street
+                ?? (loan.address_city ? `${loan.address_city}, ${loan.address_state ?? ''}` : null)
+                ?? loan.property_type
+                ?? 'Loan'
+              const sublabel = loan.address_street && loan.address_city
+                ? [loan.address_city, loan.address_state, loan.address_zip].filter(Boolean).join(', ')
+                : null
               return (
                 <div key={loan.id} className="bg-white rounded-xl border border-gray-200 p-5">
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <p className="font-semibold text-gray-900 text-sm">{label}</p>
+                      {sublabel && <p className="text-xs text-gray-500 mt-0.5">{sublabel}</p>}
                       <p className="text-xs text-gray-400 mt-0.5 capitalize">
                         {[loan.loan_program?.replace(/_/g, ' '), loan.loan_purpose].filter(Boolean).join(' · ')}
                         {loan.loan_amount ? ` · $${Number(loan.loan_amount).toLocaleString()}` : ''}
