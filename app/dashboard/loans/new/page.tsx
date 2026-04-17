@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 const PROPERTY_TYPES = [
-  'Multifamily', 'Mixed Use', 'Office', 'Retail', 'Industrial', 'Warehouse',
+  'Multifamily', 'Multifamily 2-4 Units', 'Mixed Use', 'Office', 'Retail', 'Industrial', 'Warehouse',
   'Self Storage', 'Hotel / Motel', 'Mobile Home Park', 'Senior Housing',
   'Student Housing', 'Single Family', 'Condo', 'Townhouse', '2-4 Unit',
   'Land', 'Gas Station', 'Car Wash', 'Auto Dealer', 'Restaurant',

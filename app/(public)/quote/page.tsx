@@ -15,9 +15,9 @@ const US_STATES = [
 ]
 
 const PROPERTY_TYPES = [
-  'Multifamily 5+ Units','Office','Retail','Industrial','Mixed-Use','Hotel',
+  'Multifamily 5+ Units','Multifamily 2-4 Units','Office','Retail','Industrial','Mixed-Use','Hotel',
   'Self-Storage','Mobile Home Park','Senior Housing','Student Housing',
-  'Single Family Rental','Duplex','Triplex','Fourplex','Residential Portfolio',
+  'Single Family','Residential Portfolio',
   'Commercial Portfolio','Medical Building','RV Park','Assisted Living',
   'Ground-Up Construction Site','Vacant Land','Other',
 ]
