@@ -39,6 +39,16 @@ const US_STATES = [
   'VA','WA','WV','WI','WY',
 ]
 
+type LenderContact = {
+  id: string
+  lender_id: string
+  name: string | null
+  email: string | null
+  phone: string | null
+  title: string | null
+  notes: string | null
+}
+
 type Lender = {
   id: string
   company: string | null
@@ -58,6 +68,7 @@ type Lender = {
   max_ltv_cash_out: number | null
   notes: string | null
   active: boolean
+  lender_contacts: LenderContact[]
 }
 
 const BLANK: Partial<Lender> = {
@@ -66,8 +77,10 @@ const BLANK: Partial<Lender> = {
   property_types: [], preferred_property_types: [],
   min_loan_amount: null, max_loan_amount: null,
   max_ltv_purchase: null, max_ltv_rate_term: null, max_ltv_cash_out: null,
-  notes: '', active: true,
+  notes: '', active: true, lender_contacts: [],
 }
+
+const BLANK_CONTACT = { name: '', email: '', phone: '', title: '', notes: '' }
 
 function fmt$(n: number | null) {
   if (!n) return ''
@@ -87,6 +100,11 @@ export default function LendersPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<Record<string, Partial<Lender>>>({})
   const [saving, setSaving] = useState<string | null>(null)
+  const [addingContactFor, setAddingContactFor] = useState<string | null>(null)
+  const [contactDraft, setContactDraft] = useState(BLANK_CONTACT)
+  const [editingContact, setEditingContact] = useState<string | null>(null)
+  const [contactEditDraft, setContactEditDraft] = useState(BLANK_CONTACT)
+  const [savingContact, setSavingContact] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
   const [addDraft, setAddDraft] = useState<Partial<Lender>>(BLANK)
   const [addSaving, setAddSaving] = useState(false)
@@ -135,6 +153,37 @@ export default function LendersPage() {
     setAddDraft(BLANK)
     setShowAdd(false)
     setAddSaving(false)
+  }
+
+  async function addContact(lenderId: string) {
+    setSavingContact(true)
+    await fetch('/api/lender-contacts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lender_id: lenderId, ...contactDraft }),
+    })
+    await load()
+    setContactDraft(BLANK_CONTACT)
+    setAddingContactFor(null)
+    setSavingContact(false)
+  }
+
+  async function saveContact(contactId: string) {
+    setSavingContact(true)
+    await fetch(`/api/lender-contacts/${contactId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(contactEditDraft),
+    })
+    await load()
+    setEditingContact(null)
+    setSavingContact(false)
+  }
+
+  async function deleteContact(contactId: string) {
+    if (!confirm('Remove this contact?')) return
+    await fetch(`/api/lender-contacts/${contactId}`, { method: 'DELETE' })
+    await load()
   }
 
   async function handleCsv(e: React.ChangeEvent<HTMLInputElement>) {
@@ -339,9 +388,100 @@ export default function LendersPage() {
                     </div>
                     {lender.notes && <div className="col-span-2 md:col-span-3"><ReadField label="Notes" value={lender.notes} /></div>}
                   </div>
+                  {/* Contacts */}
+                  <div className="col-span-2 md:col-span-3 border-t border-gray-100 pt-3 mt-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Contacts</p>
+                      <button
+                        onClick={e => { e.stopPropagation(); setAddingContactFor(lender.id); setContactDraft(BLANK_CONTACT) }}
+                        className="text-xs text-[#003087] hover:underline"
+                      >
+                        + Add Contact
+                      </button>
+                    </div>
+
+                    {lender.lender_contacts.length === 0 && !addingContactFor && (
+                      <p className="text-xs text-gray-400 italic">No contacts yet.</p>
+                    )}
+
+                    <div className="space-y-2">
+                      {lender.lender_contacts.map(c => (
+                        <div key={c.id}>
+                          {editingContact === c.id ? (
+                            <div className="bg-gray-50 rounded p-3 space-y-2">
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                <input placeholder="Name" value={contactEditDraft.name} onChange={e => setContactEditDraft(d => ({ ...d, name: e.target.value }))}
+                                  className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#003087]" />
+                                <input placeholder="Title" value={contactEditDraft.title} onChange={e => setContactEditDraft(d => ({ ...d, title: e.target.value }))}
+                                  className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#003087]" />
+                                <input placeholder="Email" value={contactEditDraft.email} onChange={e => setContactEditDraft(d => ({ ...d, email: e.target.value }))}
+                                  className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#003087]" />
+                                <input placeholder="Phone" value={contactEditDraft.phone} onChange={e => setContactEditDraft(d => ({ ...d, phone: e.target.value }))}
+                                  className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#003087]" />
+                              </div>
+                              <input placeholder="Notes" value={contactEditDraft.notes} onChange={e => setContactEditDraft(d => ({ ...d, notes: e.target.value }))}
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#003087]" />
+                              <div className="flex gap-2">
+                                <button onClick={e => { e.stopPropagation(); saveContact(c.id) }} disabled={savingContact}
+                                  className="bg-[#003087] text-white px-3 py-1 rounded text-xs font-medium disabled:opacity-50">
+                                  {savingContact ? 'Saving...' : 'Save'}
+                                </button>
+                                <button onClick={e => { e.stopPropagation(); setEditingContact(null) }}
+                                  className="border border-gray-300 text-gray-600 px-3 py-1 rounded text-xs">Cancel</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-4 py-1.5 border-b border-gray-50 last:border-0">
+                              <div className="min-w-0 flex-1">
+                                <span className="text-sm font-medium text-gray-800">{c.name || '—'}</span>
+                                {c.title && <span className="text-xs text-gray-400 ml-2">{c.title}</span>}
+                                <div className="text-xs text-gray-500 mt-0.5 flex gap-3 flex-wrap">
+                                  {c.email && <span>{c.email}</span>}
+                                  {c.phone && <span>{c.phone}</span>}
+                                  {c.notes && <span className="italic text-gray-400">{c.notes}</span>}
+                                </div>
+                              </div>
+                              <div className="flex gap-2 flex-shrink-0">
+                                <button onClick={e => { e.stopPropagation(); setEditingContact(c.id); setContactEditDraft({ name: c.name ?? '', email: c.email ?? '', phone: c.phone ?? '', title: c.title ?? '', notes: c.notes ?? '' }) }}
+                                  className="text-xs text-gray-400 hover:text-[#003087]">Edit</button>
+                                <button onClick={e => { e.stopPropagation(); deleteContact(c.id) }}
+                                  className="text-xs text-gray-300 hover:text-red-400">✕</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {/* Add contact form */}
+                      {addingContactFor === lender.id && (
+                        <div className="bg-blue-50 rounded p-3 space-y-2 mt-1">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <input placeholder="Name" value={contactDraft.name} onChange={e => setContactDraft(d => ({ ...d, name: e.target.value }))}
+                              className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#003087]" />
+                            <input placeholder="Title" value={contactDraft.title} onChange={e => setContactDraft(d => ({ ...d, title: e.target.value }))}
+                              className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#003087]" />
+                            <input placeholder="Email" value={contactDraft.email} onChange={e => setContactDraft(d => ({ ...d, email: e.target.value }))}
+                              className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#003087]" />
+                            <input placeholder="Phone" value={contactDraft.phone} onChange={e => setContactDraft(d => ({ ...d, phone: e.target.value }))}
+                              className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#003087]" />
+                          </div>
+                          <input placeholder="Notes" value={contactDraft.notes} onChange={e => setContactDraft(d => ({ ...d, notes: e.target.value }))}
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#003087]" />
+                          <div className="flex gap-2">
+                            <button onClick={e => { e.stopPropagation(); addContact(lender.id) }} disabled={savingContact}
+                              className="bg-[#003087] text-white px-3 py-1 rounded text-xs font-medium disabled:opacity-50">
+                              {savingContact ? 'Saving...' : 'Add'}
+                            </button>
+                            <button onClick={e => { e.stopPropagation(); setAddingContactFor(null) }}
+                              className="border border-gray-300 text-gray-600 px-3 py-1 rounded text-xs">Cancel</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); setEditingId(lender.id) }}
-                    className="border border-[#003087] text-[#003087] px-4 py-1.5 rounded text-sm font-medium hover:bg-blue-50"
+                    className="mt-3 border border-[#003087] text-[#003087] px-4 py-1.5 rounded text-sm font-medium hover:bg-blue-50"
                   >
                     Edit
                   </button>

@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from('lenders')
-    .select('*')
+    .select('*, lender_contacts(*)')
     .order('company', { ascending: true })
 
   if (type) query = query.eq('lender_type', type)
