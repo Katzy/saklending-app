@@ -12,7 +12,8 @@ export async function GET() {
     .from('loans')
     .select('id, loan_amount, loan_purpose, loan_program, property_type, address_street, address_city, address_state, address_zip, property_image_path, stage_updated_at')
     .eq('stage', 'funded')
-    .gte('loan_amount', 250000)
+    .eq('show_on_homepage', true)
+    .gte('loan_amount', 225000)
     .order('loan_amount', { ascending: false })
     .limit(6)
 
