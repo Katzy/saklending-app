@@ -299,8 +299,8 @@ export default function BorrowerPropertiesPage() {
                                 <Link key={l.id} href={`/borrower/loans/${l.id}`}
                                   className="inline-flex items-center gap-1 text-xs text-[#003087] border border-[#003087] px-2 py-1 rounded hover:bg-blue-50">
                                   {l.loan_program
-                                    ? l.loan_program.charAt(0).toUpperCase() + l.loan_program.slice(1)
-                                    : 'Loan'}{' '}— {l.stage}
+                                    ? ({ permanent: 'Long Term', ground_up: 'Ground Up', bridge: 'Bridge', rehab: 'Rehab' }[l.loan_program] ?? (l.loan_program.charAt(0).toUpperCase() + l.loan_program.slice(1)))
+                                    : 'Loan'}{' '}— {{ lead: 'In Review', qualified: 'Qualified', application: 'Application', underwriting: 'Underwriting', approved: 'Approved', funded: 'Funded' }[l.stage] ?? l.stage}
                                 </Link>
                               ))}
                             </div>
