@@ -38,6 +38,7 @@ export default function RequestLoanForm({ properties, prefillPropertyId, onCance
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
   const [zip, setZip] = useState('')
+  const [alreadyOwned, setAlreadyOwned] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -77,6 +78,7 @@ export default function RequestLoanForm({ properties, prefillPropertyId, onCance
         address_city:   addressCity,
         address_state:  addressState,
         address_zip:    addressZip,
+        already_owned:  !selectedProp && alreadyOwned,
       }),
     })
 
@@ -147,6 +149,19 @@ export default function RequestLoanForm({ properties, prefillPropertyId, onCance
                 className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
             </div>
           </div>
+        )}
+
+        {/* Already owned checkbox — only for new addresses */}
+        {selectedPropId === '__new__' && (
+          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={alreadyOwned}
+              onChange={(e) => setAlreadyOwned(e.target.checked)}
+              className="rounded"
+            />
+            I already own this property (add to my property list)
+          </label>
         )}
 
         {/* Loan details */}

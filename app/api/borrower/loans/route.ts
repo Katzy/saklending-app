@@ -55,6 +55,27 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  // If borrower already owns this property and it's a new address, create a property record
+  if (body.already_owned && !body.property_id && body.address_street) {
+    const { data: existing } = await supabase
+      .from('properties')
+      .select('id')
+      .eq('contact_id', auth.contact_id)
+      .eq('address_street', body.address_street)
+      .maybeSingle()
+
+    if (!existing) {
+      await supabase.from('properties').insert({
+        contact_id: auth.contact_id,
+        address_street: body.address_street,
+        address_city: body.address_city ?? null,
+        address_state: body.address_state ?? null,
+        address_zip: body.address_zip ?? null,
+        property_type: body.property_type ?? null,
+      })
+    }
+  }
+
   // Send email notification to admin
   if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     try {
