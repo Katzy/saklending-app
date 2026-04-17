@@ -84,6 +84,7 @@ export default function LendersPage() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<Record<string, Partial<Lender>>>({})
   const [saving, setSaving] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
@@ -265,15 +266,15 @@ export default function LendersPage() {
       <div className="space-y-1">
         {filtered.map(lender => {
           const expanded = expandedId === lender.id
+          const editing = editingId === lender.id
           const draft = getDraft(lender)
-          const isDirty = !!drafts[lender.id]
 
           return (
             <div key={lender.id} className={`bg-white rounded-lg border ${expanded ? 'border-[#003087]' : 'border-gray-200'} overflow-hidden`}>
               {/* Row summary */}
               <div
                 className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 select-none"
-                onClick={() => setExpandedId(expanded ? null : lender.id)}
+                onClick={() => { setExpandedId(expanded ? null : lender.id); if (expanded) setEditingId(null) }}
               >
                 <div className="flex-1 min-w-0 grid grid-cols-2 md:grid-cols-4 gap-2 items-center">
                   <div className="min-w-0">
@@ -303,24 +304,67 @@ export default function LendersPage() {
                 <span className="text-gray-400 text-xs ml-2">{expanded ? '▲' : '▼'}</span>
               </div>
 
-              {/* Expanded edit panel */}
-              {expanded && (
+              {/* Expanded panel — read-only view */}
+              {expanded && !editing && (
+                <div className="border-t border-gray-100 px-4 py-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm mb-4">
+                    <ReadField label="Company" value={lender.company} />
+                    <ReadField label="Contact" value={lender.contact_name} />
+                    <ReadField label="Email" value={lender.email} />
+                    <ReadField label="Phone" value={lender.phone} />
+                    <ReadField label="Type" value={LENDER_TYPES.find(t => t.value === lender.lender_type)?.label} />
+                    <ReadField label="Loan Range"
+                      value={(lender.min_loan_amount || lender.max_loan_amount)
+                        ? `${fmt$(lender.min_loan_amount) || '—'} – ${fmt$(lender.max_loan_amount) || '—'}`
+                        : null} />
+                    <div className="col-span-2 md:col-span-3">
+                      <ReadField label="Programs" value={lender.loan_programs.map(p => LOAN_PROGRAMS.find(x => x.value === p)?.label).filter(Boolean).join(', ')} />
+                    </div>
+                    <div className="col-span-2 md:col-span-3">
+                      <ReadField label="Purposes"
+                        value={LOAN_PURPOSES.filter(p => lender.loan_purposes.includes(p.value))
+                          .map(p => {
+                            const ltv = lender[p.ltv_key as keyof Lender] as number | null
+                            return ltv ? `${p.label} (${ltv}% LTV)` : p.label
+                          }).join(', ')} />
+                    </div>
+                    <div className="col-span-2 md:col-span-3">
+                      <ReadField label="Property Types"
+                        value={lender.property_types.map(pt =>
+                          lender.preferred_property_types.includes(pt) ? `★ ${pt}` : pt
+                        ).join(', ')} />
+                    </div>
+                    <div className="col-span-2 md:col-span-3">
+                      <ReadField label="States" value={lender.states.length ? lender.states.join(', ') : null} />
+                    </div>
+                    {lender.notes && <div className="col-span-2 md:col-span-3"><ReadField label="Notes" value={lender.notes} /></div>}
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setEditingId(lender.id) }}
+                    className="border border-[#003087] text-[#003087] px-4 py-1.5 rounded text-sm font-medium hover:bg-blue-50"
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
+
+              {/* Expanded panel — edit mode */}
+              {expanded && editing && (
                 <div className="border-t border-gray-100 px-4 py-5">
                   <LenderForm draft={draft} onChange={patch => setDraft(lender.id, patch)} />
                   <div className="flex gap-2 mt-4">
                     <button
-                      onClick={() => save(lender.id)}
-                      disabled={!isDirty || saving === lender.id}
+                      onClick={() => save(lender.id).then(() => setEditingId(null))}
+                      disabled={saving === lender.id}
                       className="bg-[#003087] text-white px-4 py-2 rounded text-sm font-medium hover:bg-[#002070] disabled:opacity-50"
                     >
                       {saving === lender.id ? 'Saving...' : 'Save'}
                     </button>
                     <button
-                      onClick={() => { setDrafts(d => { const n = { ...d }; delete n[lender.id]; return n }) }}
-                      disabled={!isDirty}
-                      className="border border-gray-300 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-50 disabled:opacity-40"
+                      onClick={() => { setDrafts(d => { const n = { ...d }; delete n[lender.id]; return n }); setEditingId(null) }}
+                      className="border border-gray-300 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-50"
                     >
-                      Revert
+                      Cancel
                     </button>
                   </div>
                 </div>
@@ -508,6 +552,15 @@ function LenderForm({ draft, onChange }: { draft: Partial<Lender>; onChange: (p:
         <textarea rows={2} value={draft.notes ?? ''} onChange={e => onChange({ notes: e.target.value })}
           className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087] resize-y" />
       </div>
+    </div>
+  )
+}
+
+function ReadField({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
+      <p className="text-sm text-gray-800">{value || <span className="text-gray-300">—</span>}</p>
     </div>
   )
 }
