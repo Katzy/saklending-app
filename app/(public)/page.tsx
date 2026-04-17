@@ -251,7 +251,7 @@ export default function HomePage() {
                     <p className="text-sm text-gray-700 font-medium mt-0.5">
                       {[loan.loan_program, loan.loan_purpose]
                         .filter(Boolean)
-                        .map((s) => s!.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()))
+                        .map((s) => s!.replace(/\bpermanent\b/gi, 'Long Term').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()))
                         .join(' · ')}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">

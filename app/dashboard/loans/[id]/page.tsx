@@ -377,7 +377,7 @@ export default function LoanDetailPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <F label="Loan Amount" k="loan_amount" type="number" prefix="$" {...{ draft, set, editing }} />
           <FSelect label="Purpose" k="loan_purpose" options={['purchase','refinance']} {...{ draft, set, editing }} />
-          <FSelect label="Program" k="loan_program" options={['bridge','permanent','rehab','ground_up']} {...{ draft, set, editing }} />
+          <FSelect label="Program" k="loan_program" options={['bridge','permanent','rehab','ground_up']} labels={['Bridge','Long Term','Rehab','Ground Up Construction']} {...{ draft, set, editing }} />
           <FSelect label="Financing Preference" k="financing_preference" options={['institutional','private']} {...{ draft, set, editing }} />
           <FSelect label="Property Type" k="property_type" options={PROPERTY_TYPES} {...{ draft, set, editing }} />
           <F label="State" k="state" {...{ draft, set, editing }} />
@@ -797,9 +797,14 @@ function F({ label, k, draft, set, editing, type = 'text', multiline, rows = 3, 
   )
 }
 
-type FSelectProps = { label: string; k: string; draft: LoanData; set: (k: string, v: unknown) => void; editing: boolean; options: string[] }
-function FSelect({ label, k, draft, set, editing, options }: FSelectProps) {
+type FSelectProps = { label: string; k: string; draft: LoanData; set: (k: string, v: unknown) => void; editing: boolean; options: string[]; labels?: string[] }
+function FSelect({ label, k, draft, set, editing, options, labels }: FSelectProps) {
   const val = String(draft[k] ?? '')
+  const displayLabel = (o: string, i: number) => labels?.[i] ?? o.replace(/_/g, ' ')
+  const currentLabel = () => {
+    const i = options.indexOf(val)
+    return i >= 0 ? displayLabel(val, i) : val.replace(/_/g, ' ')
+  }
   return (
     <div>
       <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{label}</label>
@@ -810,12 +815,12 @@ function FSelect({ label, k, draft, set, editing, options }: FSelectProps) {
           className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
         >
           <option value="">— Select —</option>
-          {options.map((o) => (
-            <option key={o} value={o}>{o.replace(/_/g, ' ')}</option>
+          {options.map((o, i) => (
+            <option key={o} value={o}>{displayLabel(o, i)}</option>
           ))}
         </select>
       ) : (
-        <p className="text-sm text-gray-800 capitalize">{val.replace(/_/g, ' ') || <span className="text-gray-400">—</span>}</p>
+        <p className="text-sm text-gray-800 capitalize">{currentLabel() || <span className="text-gray-400">—</span>}</p>
       )}
     </div>
   )

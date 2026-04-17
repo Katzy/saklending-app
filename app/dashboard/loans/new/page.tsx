@@ -295,7 +295,7 @@ function NewLoanPage() {
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]">
               <option value="">— Select —</option>
               <option value="bridge">Bridge</option>
-              <option value="permanent">Permanent</option>
+              <option value="permanent">Long Term</option>
               <option value="rehab">Rehab</option>
               <option value="ground_up">Ground Up</option>
             </select>

@@ -21,7 +21,7 @@ type Props = {
 
 const LOAN_PROGRAMS = [
   { value: 'bridge', label: 'Bridge' },
-  { value: 'permanent', label: 'Permanent' },
+  { value: 'permanent', label: 'Long Term' },
   { value: 'rehab', label: 'Rehab' },
   { value: 'ground_up', label: 'Ground Up Construction' },
 ]
