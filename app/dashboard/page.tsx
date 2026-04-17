@@ -6,12 +6,12 @@ async function getStats() {
   const supabase = createServiceClient()
 
   const [
-    { count: totalContacts },
+    { data: contactRows },
     { count: activeLoans },
     { count: newLeads },
     { data: recentLoans },
   ] = await Promise.all([
-    supabase.from('contacts').select('*', { count: 'exact', head: true }),
+    supabase.from('contacts').select('id'),
     supabase.from('loans').select('*', { count: 'exact', head: true }).or('is_dead.is.null,is_dead.eq.false'),
     supabase.from('loans').select('*', { count: 'exact', head: true }).eq('stage', 'lead').or('is_dead.is.null,is_dead.eq.false'),
     supabase.from('loans')
@@ -21,6 +21,8 @@ async function getStats() {
       .limit(5),
   ])
 
+  const totalContacts = contactRows?.length ?? 0
+
   // Fetch borrower names for recent loans
   const contactIds = (recentLoans ?? []).map(l => l.contact_id).filter(Boolean)
   const { data: contactNames } = contactIds.length
@@ -29,7 +31,7 @@ async function getStats() {
 
   const contactMap = Object.fromEntries((contactNames ?? []).map(c => [c.id, `${c.first_name} ${c.last_name}`]))
 
-  return { totalContacts, activeLoans, newLeads, recentLoans, contactMap }
+  return { totalContacts, activeLoans, newLeads: newLeads ?? 0, recentLoans, contactMap }
 }
 
 const STAGE_COLORS: Record<string, string> = {
