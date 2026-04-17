@@ -12,18 +12,25 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServiceClient()
 
-  // Create or find contact
-  const { data: contact } = await supabase
+  // Create contact, or find existing one by email
+  let contact: { id: string } | null = null
+  const { data: inserted } = await supabase
     .from('contacts')
-    .insert({
-      first_name: firstName,
-      last_name: lastName,
-      phone,
-      email,
-      source: 'quote_form',
-    })
+    .insert({ first_name: firstName, last_name: lastName, phone, email, source: 'quote_form' })
     .select('id')
     .single()
+
+  if (inserted) {
+    contact = inserted
+  } else {
+    // Already exists — look up by email
+    const { data: existing } = await supabase
+      .from('contacts')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle()
+    contact = existing ?? null
+  }
 
   // Create loan record
   if (contact?.id) {
