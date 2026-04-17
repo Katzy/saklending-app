@@ -15,6 +15,7 @@ type Loan = {
   address_street: string | null
   address_city: string | null
   address_state: string | null
+  address_zip: string | null
   stage: string
 }
 
@@ -116,20 +117,20 @@ export default function BorrowerHomePage() {
               <div className="flex items-start justify-between gap-4 p-4 flex-1">
                 <div>
                   <p className="font-semibold text-gray-900">
-                    {loan.address_city
-                      ? `${loan.address_city}, ${loan.address_state ?? ''}`
-                      : loan.property_type ?? 'Property'}
+                    {loan.address_street ?? loan.property_type ?? 'Property'}
                   </p>
-                  <p className="text-sm text-gray-500 mt-0.5">
+                  {(loan.address_city || loan.address_state) && (
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      {[loan.address_city, loan.address_state, loan.address_zip].filter(Boolean).join(', ')}
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-400 mt-0.5">
                     {[
-                      loan.loan_program?.replace('_', ' '),
+                      loan.loan_program?.replace(/_/g, ' '),
                       loan.loan_purpose,
                       loan.loan_amount ? `$${Number(loan.loan_amount).toLocaleString()}` : null,
                     ].filter(Boolean).join(' · ')}
                   </p>
-                  {loan.address_street && (
-                    <p className="text-xs text-gray-400 mt-1">{loan.address_street}</p>
-                  )}
                 </div>
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize flex-shrink-0 ${STAGE_COLORS[loan.stage] ?? 'bg-gray-100 text-gray-600'}`}>
                   {STAGE_LABELS[loan.stage] ?? loan.stage}

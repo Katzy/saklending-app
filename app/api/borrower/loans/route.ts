@@ -10,7 +10,7 @@ export async function GET() {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('loans')
-    .select('id, created_at, loan_amount, loan_purpose, loan_program, property_type, property_id, address_street, address_city, address_state, stage, is_dead')
+    .select('id, created_at, loan_amount, loan_purpose, loan_program, property_type, property_id, address_street, address_city, address_state, address_zip, stage, is_dead')
     .eq('contact_id', auth.contact_id)
     .eq('is_dead', false)
     .order('created_at', { ascending: false })
