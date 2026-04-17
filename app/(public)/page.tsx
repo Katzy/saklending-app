@@ -10,9 +10,17 @@ type ClosedLoan = {
   loan_purpose: string | null
   loan_program: string | null
   property_type: string | null
+  address_street: string | null
   address_city: string | null
   address_state: string | null
-  image_url: string | null
+  address_zip: string | null
+}
+
+function streetViewUrl(loan: ClosedLoan) {
+  if (!loan.address_street) return null
+  const address = [loan.address_street, loan.address_city, loan.address_state, loan.address_zip]
+    .filter(Boolean).join(', ')
+  return `/api/streetview?address=${encodeURIComponent(address)}&width=600&height=400`
 }
 
 type Rate = { name: string; today: string; thirtyDaysAgo: string }
@@ -196,15 +204,22 @@ export default function HomePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
               {closedLoans.map((loan) => (
                 <div key={loan.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                  {loan.image_url ? (
-                    <div className="relative h-44 w-full">
-                      <Image src={loan.image_url} alt={loan.address_city ?? 'Property'} fill className="object-cover" unoptimized />
-                    </div>
-                  ) : (
-                    <div className="h-44 bg-gradient-to-br from-[#003087] to-[#0050c8] flex items-center justify-center">
-                      <span className="text-white text-4xl opacity-30">🏢</span>
-                    </div>
-                  )}
+                  {streetViewUrl(loan) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={streetViewUrl(loan)!}
+                      alt={loan.address_city ?? 'Property'}
+                      className="h-44 w-full object-cover"
+                      onError={(e) => {
+                        const el = e.currentTarget
+                        el.style.display = 'none'
+                        el.nextElementSibling?.classList.remove('hidden')
+                      }}
+                    />
+                  ) : null}
+                  <div className={`h-44 bg-gradient-to-br from-[#003087] to-[#0050c8] flex items-center justify-center ${streetViewUrl(loan) ? 'hidden' : ''}`}>
+                    <span className="text-white text-4xl opacity-30">🏢</span>
+                  </div>
                   <div className="p-4">
                     {loan.loan_amount && (
                       <p className="text-xl font-bold text-[#003087]">
