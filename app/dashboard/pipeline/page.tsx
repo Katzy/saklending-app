@@ -76,8 +76,9 @@ export default function PipelinePage() {
   const dead    = loans.filter((l) => l.is_dead)
   const funded  = active.filter((l) => l.stage === 'funded')
   const byStage = (stage: string) => {
-    if (stage === 'funded' && !showFunded) return []
-    return active.filter((l) => l.stage === stage)
+    const stageLoans = active.filter((l) => l.stage === stage)
+    if (stage === 'funded' && !showFunded) return stageLoans.slice(0, 1)
+    return stageLoans
   }
 
   function handleDragStart(e: React.DragEvent, loanId: string) {
@@ -177,7 +178,9 @@ export default function PipelinePage() {
                 >
                   <div className={`flex items-center justify-between px-3 py-2 rounded-t text-xs font-semibold ${STAGE_HEADER_COLORS[key]}`}>
                     <span>{label}</span>
-                    <span className="bg-white bg-opacity-60 rounded-full px-1.5 py-0.5">{cards.length}</span>
+                    <span className="bg-white bg-opacity-60 rounded-full px-1.5 py-0.5">
+                      {key === 'funded' ? funded.length : cards.length}
+                    </span>
                   </div>
                   <div className={`border border-gray-200 border-t-0 rounded-b min-h-[200px] p-2 space-y-2 transition-colors ${
                     isOver ? 'bg-blue-50 border-[#003087]' : 'bg-gray-50'
