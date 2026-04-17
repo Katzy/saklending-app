@@ -24,11 +24,11 @@ const LOAN_PURPOSES = [
 ]
 
 const PROPERTY_TYPES = [
-  'Multifamily', 'Multifamily 2-4 Units', 'Mixed Use', 'Office', 'Retail',
+  'Multifamily 5+ Units', 'Multifamily 2-4 Units', 'Mixed Use', 'Office', 'Retail',
   'Industrial', 'Warehouse', 'Self Storage', 'Hotel / Motel', 'Mobile Home Park',
   'Senior Housing', 'Student Housing', 'Single Family', 'Condo', 'Townhouse',
-  '2-4 Unit', 'Land', 'Gas Station', 'Car Wash', 'Auto Dealer', 'Restaurant',
-  'Medical Office', 'Assisted Living', 'Church', 'Special Purpose', 'Other',
+  'Land', 'Gas Station', 'Car Wash', 'Auto Dealer', 'Restaurant',
+  'Medical Office', 'Assisted Living', 'Church', 'Special Purpose',
 ]
 
 const US_STATES = [
@@ -233,7 +233,7 @@ export default function LendersPage() {
       {showAdd && (
         <div className="bg-white border border-[#003087] rounded-xl p-5 mb-4">
           <h2 className="text-sm font-semibold text-gray-700 mb-4">New Lender</h2>
-          <LenderForm draft={addDraft} onChange={setAddDraft} />
+          <LenderForm draft={addDraft} onChange={patch => setAddDraft(d => ({ ...d, ...patch }))} />
           <div className="flex gap-2 mt-4">
             <button onClick={addLender} disabled={addSaving}
               className="bg-[#003087] text-white px-4 py-2 rounded text-sm font-medium hover:bg-[#002070] disabled:opacity-50">
