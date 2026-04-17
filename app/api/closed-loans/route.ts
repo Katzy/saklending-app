@@ -4,13 +4,13 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 
 // GET /api/closed-loans — public endpoint for homepage showcase
-// Returns funded loans over $250K, ordered by most recently funded
+// Returns top 6 funded loans over $250K by loan amount, displayed in funded order
 export async function GET() {
   const supabase = createServiceClient()
 
   const { data, error } = await supabase
     .from('loans')
-    .select('id, loan_amount, loan_purpose, loan_program, property_type, address_street, address_city, address_state, address_zip, property_image_path')
+    .select('id, loan_amount, loan_purpose, loan_program, property_type, address_street, address_city, address_state, address_zip, property_image_path, stage_updated_at')
     .eq('stage', 'funded')
     .gte('loan_amount', 250000)
     .order('loan_amount', { ascending: false })
@@ -18,9 +18,14 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  // Sort the top-6-by-amount by funded date for display order
+  const sorted = (data ?? []).sort((a, b) =>
+    new Date(b.stage_updated_at ?? 0).getTime() - new Date(a.stage_updated_at ?? 0).getTime()
+  )
+
   // Generate signed URLs for uploaded images
   const loans = await Promise.all(
-    (data ?? []).map(async (loan) => {
+    sorted.map(async (loan) => {
       let image_url: string | null = null
       if (loan.property_image_path) {
         const { data: signed } = await supabase.storage
