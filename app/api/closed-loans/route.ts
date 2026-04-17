@@ -16,6 +16,8 @@ export async function GET() {
     .order('stage_updated_at', { ascending: false })
     .limit(12)
 
+  console.log('closed-loans query result:', JSON.stringify({ data, error }))
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json(data ?? [], {
