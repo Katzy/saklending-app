@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   // Create loan record
   if (contact?.id) {
-    await supabase.from('loans').insert({
+    const { error: loanError } = await supabase.from('loans').insert({
       contact_id: contact.id,
       loan_amount: parseFloat(loanAmount),
       purchase_price: propertyValue ? parseFloat(propertyValue) : null,
@@ -49,9 +49,13 @@ export async function POST(req: NextRequest) {
       address_city: addressCity || null,
       address_state: addressState || null,
       address_zip: addressZip || null,
-      comments,
       stage: 'lead',
     })
+
+    if (loanError) {
+      console.error('Quote loan insert error:', loanError.message)
+      return NextResponse.json({ error: loanError.message }, { status: 500 })
+    }
 
     // Create property record if borrower already owns it
     if (alreadyOwned && addressStreet) {
