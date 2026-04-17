@@ -224,6 +224,7 @@ function NewLoanPage() {
               <option value="5b">5yr Fixed / 10yr balloon</option>
               <option value="10">10yr Fixed</option>
               <option value="10b">10yr Fixed / 10yr balloon</option>
+              <option value="30">30yr Fixed</option>
             </select>
           </div>
         </div>
