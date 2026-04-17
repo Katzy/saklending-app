@@ -10,17 +10,18 @@ const LENDER_TYPES = [
 ]
 
 const LOAN_PROGRAMS = [
-  { value: 'bridge',    label: 'Bridge' },
-  { value: 'long_term', label: 'Long Term' },
+  { value: 'bridge',    label: 'Short Term Bridge' },
+  { value: 'long_term', label: 'Long Term Permanent' },
   { value: 'rehab',     label: 'Rehab' },
-  { value: 'ground_up', label: 'Ground Up' },
+  { value: 'ground_up', label: 'Ground Up Construction' },
   { value: 'dscr',      label: 'DSCR' },
   { value: 'cmbs',      label: 'CMBS' },
 ]
 
 const LOAN_PURPOSES = [
-  { value: 'purchase',  label: 'Purchase' },
-  { value: 'refinance', label: 'Refinance' },
+  { value: 'purchase',   label: 'Purchase',              ltv_key: 'max_ltv_purchase' },
+  { value: 'rate_term',  label: 'Rate & Term Refinance', ltv_key: 'max_ltv_rate_term' },
+  { value: 'cash_out',   label: 'Cash-Out Refinance',    ltv_key: 'max_ltv_cash_out' },
 ]
 
 const PROPERTY_TYPES = [
@@ -52,6 +53,9 @@ type Lender = {
   preferred_property_types: string[]
   min_loan_amount: number | null
   max_loan_amount: number | null
+  max_ltv_purchase: number | null
+  max_ltv_rate_term: number | null
+  max_ltv_cash_out: number | null
   notes: string | null
   active: boolean
 }
@@ -60,7 +64,9 @@ const BLANK: Partial<Lender> = {
   company: '', contact_name: '', email: '', phone: '',
   lender_type: null, states: [], loan_programs: [], loan_purposes: [],
   property_types: [], preferred_property_types: [],
-  min_loan_amount: null, max_loan_amount: null, notes: '', active: true,
+  min_loan_amount: null, max_loan_amount: null,
+  max_ltv_purchase: null, max_ltv_rate_term: null, max_ltv_cash_out: null,
+  notes: '', active: true,
 }
 
 function fmt$(n: number | null) {
@@ -406,18 +412,36 @@ function LenderForm({ draft, onChange }: { draft: Partial<Lender>; onChange: (p:
         </div>
       </div>
 
-      {/* Loan purposes */}
+      {/* Loan purposes + Max LTV */}
       <div>
-        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Loan Purposes</label>
-        <div className="flex gap-4">
-          {LOAN_PURPOSES.map(p => (
-            <label key={p.value} className="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" checked={purposes.includes(p.value)}
-                onChange={() => onChange({ loan_purposes: toggleArr(purposes, p.value) })}
-                className="rounded" />
-              <span className="text-sm text-gray-700">{p.label}</span>
-            </label>
-          ))}
+        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Loan Purposes & Max LTV</label>
+        <div className="space-y-3">
+          {LOAN_PURPOSES.map(p => {
+            const ltvKey = p.ltv_key as keyof Lender
+            const ltvVal = (draft[ltvKey] as number | null) ?? 70
+            const checked = purposes.includes(p.value)
+            return (
+              <div key={p.value} className="flex items-center gap-4">
+                <label className="flex items-center gap-1.5 cursor-pointer w-44 flex-shrink-0">
+                  <input type="checkbox" checked={checked}
+                    onChange={() => onChange({ loan_purposes: toggleArr(purposes, p.value) })}
+                    className="rounded" />
+                  <span className="text-sm text-gray-700">{p.label}</span>
+                </label>
+                {checked && (
+                  <div className="flex items-center gap-2 flex-1">
+                    <input
+                      type="range" min={0} max={100} step={5}
+                      value={ltvVal}
+                      onChange={e => onChange({ [ltvKey]: Number(e.target.value) } as Partial<Lender>)}
+                      className="flex-1 accent-[#003087]"
+                    />
+                    <span className="text-sm font-medium text-[#003087] w-12 text-right">{ltvVal}% LTV</span>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
 
