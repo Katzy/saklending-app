@@ -13,8 +13,8 @@ export async function GET() {
     .select('id, loan_amount, loan_purpose, loan_program, property_type, address_street, address_city, address_state, address_zip, property_image_path')
     .eq('stage', 'funded')
     .gte('loan_amount', 250000)
-    .order('stage_updated_at', { ascending: false })
-    .limit(12)
+    .order('loan_amount', { ascending: false })
+    .limit(6)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
