@@ -195,6 +195,25 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Services teaser */}
+      <div className="max-w-4xl mx-auto px-4 py-12 text-center">
+        <h2 className="text-2xl font-bold text-[#003087] mb-4">Commercial Loan Solutions</h2>
+        <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
+          SAK Lending provides end-to-end guidance through the complete loan process — from initial structuring to closing. We act as your dedicated debt concierge, navigating lenders, terms, and timelines on your behalf.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {['Purchase','Refinance','Ground Up Construction','Short Term Bridge','Small Balance DSCR','CMBS'].map(t => (
+            <Link
+              key={t}
+              href="/services"
+              className="border border-[#003087] text-[#003087] rounded px-4 py-3 text-sm font-medium hover:bg-[#003087] hover:text-white transition-colors"
+            >
+              {t}
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {/* Recently Closed */}
       {closedLoans.length > 0 && (
         <div className="bg-gray-50 py-14">
@@ -245,25 +264,6 @@ export default function HomePage() {
           </div>
         </div>
       )}
-
-      {/* Services teaser */}
-      <div className="max-w-4xl mx-auto px-4 py-12 text-center">
-        <h2 className="text-2xl font-bold text-[#003087] mb-4">Commercial Loan Solutions</h2>
-        <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-          SAK Lending provides end-to-end guidance through the complete loan process — from initial structuring to closing. We act as your dedicated debt concierge, navigating lenders, terms, and timelines on your behalf.
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {['Purchase','Refinance','Ground Up Construction','Short-Term Bridge','Small Balance DSCR','CMBS'].map(t => (
-            <Link
-              key={t}
-              href="/services"
-              className="border border-[#003087] text-[#003087] rounded px-4 py-3 text-sm font-medium hover:bg-[#003087] hover:text-white transition-colors"
-            >
-              {t}
-            </Link>
-          ))}
-        </div>
-      </div>
     </>
   )
 }
