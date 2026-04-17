@@ -4,7 +4,11 @@ import { createServiceClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { firstName, lastName, phone, email, loanAmount, propertyValue, noi, propertyType, loanType, state, comments } = body
+  const {
+    firstName, lastName, phone, email, loanAmount, propertyValue, noi,
+    propertyType, loanType, comments, alreadyOwned,
+    addressStreet, addressCity, addressState, addressZip,
+  } = body
 
   if (!firstName || !lastName || !email || !loanAmount) {
     return NextResponse.json({ error: 'Required fields missing' }, { status: 400 })
@@ -41,11 +45,37 @@ export async function POST(req: NextRequest) {
       noi: noi ? parseFloat(noi) : null,
       property_type: propertyType,
       loan_program: loanType,
-      state,
+      address_street: addressStreet || null,
+      address_city: addressCity || null,
+      address_state: addressState || null,
+      address_zip: addressZip || null,
       comments,
       stage: 'lead',
     })
+
+    // Create property record if borrower already owns it
+    if (alreadyOwned && addressStreet) {
+      const { data: existingProp } = await supabase
+        .from('properties')
+        .select('id')
+        .eq('contact_id', contact.id)
+        .eq('address_street', addressStreet)
+        .maybeSingle()
+
+      if (!existingProp) {
+        await supabase.from('properties').insert({
+          contact_id: contact.id,
+          address_street: addressStreet,
+          address_city: addressCity || null,
+          address_state: addressState || null,
+          address_zip: addressZip || null,
+          property_type: propertyType || null,
+        })
+      }
+    }
   }
+
+  const addressLine = [addressStreet, addressCity, addressState, addressZip].filter(Boolean).join(', ') || 'Not provided'
 
   // Send email notification
   if (process.env.RESEND_API_KEY) {
@@ -70,7 +100,8 @@ Property Value: ${propertyValue ? '$' + Number(propertyValue).toLocaleString() :
 NOI: ${noi ? '$' + Number(noi).toLocaleString() : 'Not provided'}
 Property Type: ${propertyType}
 Loan Type: ${loanType}
-State: ${state}
+Property Address: ${addressLine}
+Already Owned: ${alreadyOwned ? 'Yes' : 'No'}
 Comments: ${comments || 'None'}
       `.trim(),
     })

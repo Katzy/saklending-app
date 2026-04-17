@@ -43,8 +43,11 @@ function getThankYouMessage() {
 export default function QuotePage() {
   const [form, setForm] = useState({
     firstName: '', lastName: '', phone: '', email: '',
-    loanAmount: '', propertyValue: '', noi: '', propertyType: '', loanType: '', state: '', comments: '',
+    loanAmount: '', propertyValue: '', noi: '', propertyType: '', loanType: '',
+    addressStreet: '', addressCity: '', addressState: '', addressZip: '',
+    comments: '',
   })
+  const [alreadyOwned, setAlreadyOwned] = useState(false)
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -57,7 +60,7 @@ export default function QuotePage() {
       const res = await fetch('/api/quote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, alreadyOwned }),
       })
       if (!res.ok) throw new Error()
       setStatus('success')
@@ -76,7 +79,7 @@ export default function QuotePage() {
           <p className="text-gray-600 mt-1">{getThankYouMessage()}</p>
           <p className="text-gray-500 text-sm mt-1">— SAK Lending Team</p>
           <button
-            onClick={() => { setStatus('idle'); setForm({ firstName:'',lastName:'',phone:'',email:'',loanAmount:'',propertyValue:'',noi:'',propertyType:'',loanType:'',state:'',comments:'' }) }}
+            onClick={() => { setStatus('idle'); setAlreadyOwned(false); setForm({ firstName:'',lastName:'',phone:'',email:'',loanAmount:'',propertyValue:'',noi:'',propertyType:'',loanType:'',addressStreet:'',addressCity:'',addressState:'',addressZip:'',comments:'' }) }}
             className="mt-6 text-[#003087] text-sm underline"
           >
             Submit another request
@@ -134,13 +137,41 @@ export default function QuotePage() {
               <input type="number" min="0" value={form.noi} onChange={set('noi')} placeholder="Net operating income"
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#003087]" />
             </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium mb-1">Property Street Address</label>
+              <input value={form.addressStreet} onChange={set('addressStreet')} placeholder="123 Main St"
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#003087]" />
+            </div>
             <div>
-              <label className="block text-sm font-medium mb-1">State *</label>
-              <select required value={form.state} onChange={set('state')}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#003087]">
-                <option value="">Select state…</option>
-                {US_STATES.map(s => <option key={s}>{s}</option>)}
-              </select>
+              <label className="block text-sm font-medium mb-1">City</label>
+              <input value={form.addressCity} onChange={set('addressCity')}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#003087]" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-sm font-medium mb-1">State *</label>
+                <select required value={form.addressState} onChange={set('addressState')}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#003087]">
+                  <option value="">Select…</option>
+                  {US_STATES.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Zip</label>
+                <input value={form.addressZip} onChange={set('addressZip')} maxLength={10}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#003087]" />
+              </div>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={alreadyOwned}
+                  onChange={(e) => setAlreadyOwned(e.target.checked)}
+                  className="rounded"
+                />
+                I already own this property
+              </label>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Property Type *</label>
