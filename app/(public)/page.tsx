@@ -32,6 +32,12 @@ export default function HomePage() {
   const [closedLoans, setClosedLoans] = useState<ClosedLoan[]>([])
 
   useEffect(() => {
+    // Fetch recently closed loans (always runs)
+    fetch('/api/closed-loans')
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setClosedLoans(Array.isArray(data) ? data : []))
+      .catch(() => {})
+
     // Check localStorage cache (1 hour)
     const cached = localStorage.getItem('sakRates')
     const cachedTime = localStorage.getItem('sakRatesTime')
@@ -63,11 +69,6 @@ export default function HomePage() {
         setRatesLoading(false)
       })
 
-    // Fetch recently closed loans (best-effort)
-    fetch('/api/closed-loans')
-      .then((r) => r.ok ? r.json() : [])
-      .then((data) => setClosedLoans(Array.isArray(data) ? data : []))
-      .catch(() => {})
   }, [])
 
   return (
