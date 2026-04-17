@@ -37,6 +37,10 @@ export function createServiceClient() {
         getAll() { return [] },
         setAll() {},
       },
+      global: {
+        fetch: (url: RequestInfo | URL, options: RequestInit = {}) =>
+          fetch(url, { ...options, cache: 'no-store' }),
+      },
     }
   )
 }
