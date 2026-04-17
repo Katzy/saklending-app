@@ -134,7 +134,7 @@ export default function HomePage() {
                   ))}
             </tbody>
           </table>
-          <p className="text-xs text-gray-500 text-center py-1">Updated: {new Date().toLocaleDateString()}</p>
+          <p className="text-xs text-gray-500 text-center py-1" suppressHydrationWarning>Updated: {new Date().toLocaleDateString()}</p>
         </div>
       </div>
 
@@ -191,7 +191,7 @@ export default function HomePage() {
                   ))}
             </tbody>
           </table>
-          <p className="text-xs text-gray-500 text-center py-1.5">Updated: {new Date().toLocaleDateString()}</p>
+          <p className="text-xs text-gray-500 text-center py-1.5" suppressHydrationWarning>Updated: {new Date().toLocaleDateString()}</p>
         </div>
       </div>
 
