@@ -62,6 +62,7 @@ type Loan = {
   stage: string
   property_id: string | null
   is_dead: boolean
+  property_image_path: string | null
 }
 
 const STAGE_COLORS: Record<string, string> = {
@@ -94,6 +95,7 @@ export default function ContactDetailPage() {
 
   const [contact, setContact] = useState<Contact | null>(null)
   const [loans, setLoans] = useState<Loan[]>([])
+  const [loanImageUrls, setLoanImageUrls] = useState<Record<string, string>>({})
   const [properties, setProperties] = useState<Property[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -122,7 +124,23 @@ export default function ContactDetailPage() {
 
   const fetchLoans = useCallback(async () => {
     const res = await fetch(`/api/loans?contact_id=${id}`)
-    if (res.ok) { const j = await res.json(); setLoans(j.data ?? []) }
+    if (!res.ok) return
+    const j = await res.json()
+    const data: Loan[] = j.data ?? []
+    setLoans(data)
+    // Fetch signed image URLs for loans with uploaded photos
+    const withImages = data.filter(l => l.property_image_path)
+    if (withImages.length) {
+      const entries = await Promise.all(
+        withImages.map(async (l) => {
+          const r = await fetch(`/api/loans/${l.id}/image-url`)
+          if (!r.ok) return null
+          const { url } = await r.json()
+          return url ? [l.id, url] as [string, string] : null
+        })
+      )
+      setLoanImageUrls(Object.fromEntries(entries.filter(Boolean) as [string, string][]))
+    }
   }, [id])
 
   const fetchProperties = useCallback(async () => {
@@ -398,19 +416,25 @@ export default function ContactDetailPage() {
                 l.address_street.trim().toLowerCase() === prop.address_street.trim().toLowerCase())
             )
             const hasActiveLoan = linkedLoans.some(l => !l.is_dead && l.stage !== 'funded')
+            const uploadedImageUrl = linkedLoans.map(l => loanImageUrls[l.id]).find(Boolean) ?? null
             return (
             <div key={prop.id} className="border border-gray-200 rounded-lg overflow-hidden">
               {/* Card header — always visible */}
               <div className="flex items-stretch">
-                <StreetView
-                  street={prop.address_street}
-                  city={prop.address_city}
-                  state={prop.address_state}
-                  zip={prop.address_zip}
-                  width={200}
-                  height={200}
-                  className="w-24 flex-shrink-0 object-cover self-stretch"
-                />
+                {uploadedImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={uploadedImageUrl} alt="Property" className="w-24 flex-shrink-0 object-cover self-stretch" />
+                ) : (
+                  <StreetView
+                    street={prop.address_street}
+                    city={prop.address_city}
+                    state={prop.address_state}
+                    zip={prop.address_zip}
+                    width={200}
+                    height={200}
+                    className="w-24 flex-shrink-0 object-cover self-stretch"
+                  />
+                )}
                 <div className="flex-1 min-w-0 p-4">
                 <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
