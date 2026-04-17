@@ -18,7 +18,14 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json(data ?? [], {
+  // Temp debug: also query the specific loan directly
+  const { data: debugRow } = await supabase
+    .from('loans')
+    .select('id, property_type, stage, loan_amount')
+    .eq('id', '3e454fcd-8dc6-4617-96ce-77a20e690122')
+    .single()
+
+  return NextResponse.json({ data: data ?? [], debug: debugRow }, {
     headers: { 'Cache-Control': 'no-store' },
   })
 }
