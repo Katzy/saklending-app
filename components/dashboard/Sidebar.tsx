@@ -9,6 +9,7 @@ const NAV = [
   { href: '/dashboard',           label: 'Overview',  icon: '📊' },
   { href: '/dashboard/pipeline',  label: 'Pipeline',  icon: '🏗️' },
   { href: '/dashboard/contacts',  label: 'Contacts',  icon: '👥' },
+  { href: '/dashboard/lenders',   label: 'Banks',     icon: '🏦' },
 ]
 
 type SidebarProps = {
