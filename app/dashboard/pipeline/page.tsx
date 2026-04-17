@@ -49,6 +49,7 @@ export default function PipelinePage() {
   const [contactMap, setContactMap] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [showDead, setShowDead] = useState(false)
+  const [showFunded, setShowFunded] = useState(false)
   const [dragOverStage, setDragOverStage] = useState<string | null>(null)
   const draggingId = useRef<string | null>(null)
 
@@ -71,9 +72,13 @@ export default function PipelinePage() {
       })
   }, [])
 
-  const active = loans.filter((l) => !l.is_dead)
-  const dead   = loans.filter((l) => l.is_dead)
-  const byStage = (stage: string) => active.filter((l) => l.stage === stage)
+  const active  = loans.filter((l) => !l.is_dead)
+  const dead    = loans.filter((l) => l.is_dead)
+  const funded  = active.filter((l) => l.stage === 'funded')
+  const byStage = (stage: string) => {
+    if (stage === 'funded' && !showFunded) return []
+    return active.filter((l) => l.stage === stage)
+  }
 
   function handleDragStart(e: React.DragEvent, loanId: string) {
     draggingId.current = loanId
@@ -126,6 +131,15 @@ export default function PipelinePage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Pipeline</h1>
         <div className="flex gap-3 items-center">
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showFunded}
+              onChange={(e) => setShowFunded(e.target.checked)}
+              className="rounded"
+            />
+            Show Funded ({funded.length})
+          </label>
           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
             <input
               type="checkbox"
