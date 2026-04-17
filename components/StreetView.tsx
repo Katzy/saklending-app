@@ -20,12 +20,11 @@ function buildUrl(
   width: number,
   height: number,
 ) {
-  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
-  if (!key || !street) return null
+  if (!street) return null
   // Normalize range addresses like "468-470 Thames St" → "468 Thames St"
   const normalizedStreet = street.replace(/^(\d+)-\d+/, '$1')
   const address = [normalizedStreet, city, state, zip].filter(Boolean).join(', ')
-  return `https://maps.googleapis.com/maps/api/streetview?size=${width}x${height}&location=${encodeURIComponent(address)}&key=${key}`
+  return `/api/streetview?address=${encodeURIComponent(address)}&width=${width}&height=${height}`
 }
 
 export default function StreetView({ street, city, state, zip, width = 640, height = 400, className = '' }: Props) {
