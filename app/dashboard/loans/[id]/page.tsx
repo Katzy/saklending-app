@@ -227,6 +227,9 @@ export default function LoanDetailPage() {
     if (res.ok) {
       const imgRes = await fetch(`/api/loans/${id}/image-url`)
       if (imgRes.ok) { const j = await imgRes.json(); setImageUrl(j.url) }
+    } else {
+      const j = await res.json()
+      setSaveError(j.error ?? 'Image upload failed')
     }
     setImageUploading(false)
   }
