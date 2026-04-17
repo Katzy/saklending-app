@@ -36,6 +36,24 @@ export async function POST(req: NextRequest) {
     contact = existing ?? null
   }
 
+  // Map quote form loan type display values to internal DB values
+  const loanProgramMap: Record<string, string> = {
+    'Purchase (5 – 30 yr)':              'permanent',
+    'Refinance (5 – 30 yr)':             'permanent',
+    'Ground-Up Construction (12 – 36 mo)': 'ground_up',
+    'Bridge (6 mo – 3 yr)':              'bridge',
+    'Small Balance DSCR (5 – 30 yr)':    'permanent',
+    'CMBS (5 – 10 yr)':                  'permanent',
+  }
+  const loanPurposeMap: Record<string, string> = {
+    'Purchase (5 – 30 yr)':              'purchase',
+    'Refinance (5 – 30 yr)':             'refinance',
+    'Ground-Up Construction (12 – 36 mo)': 'purchase',
+    'Bridge (6 mo – 3 yr)':              'purchase',
+    'Small Balance DSCR (5 – 30 yr)':    'purchase',
+    'CMBS (5 – 10 yr)':                  'purchase',
+  }
+
   // Create loan record
   if (contact?.id) {
     const { error: loanError } = await supabase.from('loans').insert({
@@ -44,7 +62,8 @@ export async function POST(req: NextRequest) {
       purchase_price: propertyValue ? parseFloat(propertyValue) : null,
       noi: noi ? parseFloat(noi) : null,
       property_type: propertyType,
-      loan_program: loanType,
+      loan_program: loanProgramMap[loanType] ?? null,
+      loan_purpose: loanPurposeMap[loanType] ?? null,
       address_street: addressStreet || null,
       address_city: addressCity || null,
       address_state: addressState || null,
