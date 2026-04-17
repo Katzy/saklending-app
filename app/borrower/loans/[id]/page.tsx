@@ -71,6 +71,7 @@ export default function BorrowerLoanDetailPage() {
   const [docs, setDocs] = useState<Doc[]>([])
   const [loading, setLoading] = useState(true)
   const [docType, setDocType] = useState('other')
+  const [otherDocName, setOtherDocName] = useState('')
   const [uploading, setUploading] = useState(false)
   const [uploadMsg, setUploadMsg] = useState('')
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -95,9 +96,13 @@ export default function BorrowerLoanDetailPage() {
     setUploading(true)
     setUploadMsg('')
 
+    const resolvedDocType = docType === 'other' && otherDocName.trim()
+      ? otherDocName.trim()
+      : docType
+
     const fd = new FormData()
     fd.append('file', file)
-    fd.append('doc_type', docType)
+    fd.append('doc_type', resolvedDocType)
 
     const res = await fetch(`/api/borrower/loans/${id}/documents`, { method: 'POST', body: fd })
     if (res.ok) {
@@ -231,11 +236,20 @@ export default function BorrowerLoanDetailPage() {
         <div className="flex gap-3 items-center mb-5 flex-wrap">
           <select
             value={docType}
-            onChange={(e) => setDocType(e.target.value)}
+            onChange={(e) => { setDocType(e.target.value); setOtherDocName('') }}
             className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
           >
             {DOC_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
+          {docType === 'other' && (
+            <input
+              type="text"
+              placeholder="Document name"
+              value={otherDocName}
+              onChange={(e) => setOtherDocName(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087] w-48"
+            />
+          )}
           <input ref={fileRef} type="file" onChange={upload} className="hidden" />
           <button
             onClick={() => fileRef.current?.click()}
