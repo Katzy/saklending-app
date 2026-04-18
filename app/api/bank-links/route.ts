@@ -69,11 +69,14 @@ export async function POST(req: NextRequest) {
 
     const overviewRows = loan ? [
       loan.loan_amount     ? `<tr><td style="padding:6px 12px 6px 0;color:#6b7280;font-size:13px;">Loan Amount</td><td style="padding:6px 0;font-size:13px;font-weight:600;color:#111827;">${fmt$(loan.loan_amount)}</td></tr>` : '',
-      loan.loan_program    ? `<tr><td style="padding:6px 12px 6px 0;color:#6b7280;font-size:13px;">Program</td><td style="padding:6px 0;font-size:13px;color:#111827;text-transform:capitalize;">${loan.loan_program.replace('_', ' ')}</td></tr>` : '',
-      loan.loan_purpose    ? `<tr><td style="padding:6px 12px 6px 0;color:#6b7280;font-size:13px;">Purpose</td><td style="padding:6px 0;font-size:13px;color:#111827;text-transform:capitalize;">${loan.loan_purpose}</td></tr>` : '',
+      loan.loan_program    ? `<tr><td style="padding:6px 12px 6px 0;color:#6b7280;font-size:13px;">Program</td><td style="padding:6px 0;font-size:13px;color:#111827;">${({ bridge: 'Short Term Bridge', permanent: 'Long Term Permanent', rehab: 'Rehab', ground_up: 'Ground Up Construction' } as Record<string,string>)[loan.loan_program] ?? loan.loan_program}</td></tr>` : '',
+      loan.loan_purpose    ? `<tr><td style="padding:6px 12px 6px 0;color:#6b7280;font-size:13px;">Purpose</td><td style="padding:6px 0;font-size:13px;color:#111827;">${({ purchase: 'Purchase', refinance_rate_term: 'Rate & Term Refinance', refinance_cash_out: 'Cash-Out Refinance', refinance: 'Refinance' } as Record<string,string>)[loan.loan_purpose] ?? loan.loan_purpose}</td></tr>` : '',
       loan.property_type   ? `<tr><td style="padding:6px 12px 6px 0;color:#6b7280;font-size:13px;">Property Type</td><td style="padding:6px 0;font-size:13px;color:#111827;">${loan.property_type}</td></tr>` : '',
-      loan.purchase_price  ? `<tr><td style="padding:6px 12px 6px 0;color:#6b7280;font-size:13px;">Purchase Price</td><td style="padding:6px 0;font-size:13px;color:#111827;">${fmt$(loan.purchase_price)}</td></tr>` : '',
-      loan.arv             ? `<tr><td style="padding:6px 12px 6px 0;color:#6b7280;font-size:13px;">ARV</td><td style="padding:6px 0;font-size:13px;color:#111827;">${fmt$(loan.arv)}</td></tr>` : '',
+      loan.loan_purpose === 'purchase' && loan.purchase_price
+        ? `<tr><td style="padding:6px 12px 6px 0;color:#6b7280;font-size:13px;">Purchase Price</td><td style="padding:6px 0;font-size:13px;color:#111827;">${fmt$(loan.purchase_price)}</td></tr>`
+        : loan.arv
+          ? `<tr><td style="padding:6px 12px 6px 0;color:#6b7280;font-size:13px;">Property Value</td><td style="padding:6px 0;font-size:13px;color:#111827;">${fmt$(loan.arv)}</td></tr>`
+          : '',
     ].filter(Boolean).join('') : ''
 
     const html = `
