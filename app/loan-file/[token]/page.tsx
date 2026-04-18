@@ -178,7 +178,7 @@ export default function BankPortalPage() {
 
   const hasAnyFinancials = loan.gross_annual_income || loan.vacancy_factor_pct || loan.annual_operating_expenses
   const hasAnyBorrowerFinancials = loan.total_re_value || loan.cash_reserves || loan.investment_assets ||
-    loan.total_mortgage_debt || loan.properties_owned
+    loan.total_mortgage_debt || loan.properties_owned || contact?.credit_score_estimate
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -254,7 +254,6 @@ export default function BankPortalPage() {
           <Section title="Sponsor">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
               {contact.entity_name && <Row label="Entity" value={contact.entity_name} />}
-              {contact.credit_score_estimate && <Row label="Credit Score Est." value={String(contact.credit_score_estimate)} />}
               <div>
                 <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Contact</p>
                 <p className="text-sm text-gray-400 italic">Available through SAK Lending</p>
@@ -329,6 +328,7 @@ export default function BankPortalPage() {
         <Section title="Borrower Financials">
           {hasAnyBorrowerFinancials ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+              {contact?.credit_score_estimate && <Row label="Credit Score Est." value={String(contact.credit_score_estimate)} />}
               <Row label="Properties Owned" value={loan.properties_owned} />
               <Row label="Total RE Value" value={fmt$null(loan.total_re_value)} />
               <Row label="Cash Reserves" value={fmt$null(loan.cash_reserves)} />
