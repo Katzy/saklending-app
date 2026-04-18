@@ -9,6 +9,25 @@ import StreetView from '@/components/StreetView'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LoanData = Record<string, any>
 type Note = { id: string; created_at: string; content: string }
+type AdminDoc = { id: string; doc_type: string; file_name: string; file_size: number | null; uploaded_by_label: string; created_at: string }
+
+const ADMIN_DOC_TYPES = [
+  { value: 'broker_agreement', label: 'Broker Agreement' },
+  { value: 'pfs', label: 'Personal Financial Statement (PFS)' },
+  { value: 't12', label: 'T-12 Operating Statement' },
+  { value: 'rent_roll', label: 'Rent Roll' },
+  { value: 'purchase_contract', label: 'Purchase Contract' },
+  { value: 'appraisal', label: 'Appraisal' },
+  { value: 'environmental', label: 'Environmental Report' },
+  { value: 'other', label: 'Other' },
+]
+
+function fmtSize(bytes: number | null) {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 const STAGES = ['lead', 'qualified', 'application', 'underwriting', 'approved', 'funded']
 
@@ -87,6 +106,12 @@ export default function LoanDetailPage() {
   const [emailSent, setEmailSent] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  // Documents
+  const [docs, setDocs] = useState<AdminDoc[]>([])
+  const [docUploading, setDocUploading] = useState(false)
+  const [adminDocType, setAdminDocType] = useState('broker_agreement')
+  const adminDocFileRef = useRef<HTMLInputElement>(null)
+
   const fetchLoan = useCallback(async () => {
     const res = await fetch(`/api/loans/${id}`)
     if (!res.ok) { setLoading(false); return }
@@ -111,7 +136,12 @@ export default function LoanDetailPage() {
     if (res.ok) setBankLinks(await res.json())
   }, [id])
 
-  useEffect(() => { fetchLoan(); fetchNotes(); fetchBankLinks() }, [fetchLoan, fetchNotes, fetchBankLinks])
+  const fetchDocs = useCallback(async () => {
+    const res = await fetch(`/api/loans/${id}/documents`)
+    if (res.ok) setDocs(await res.json())
+  }, [id])
+
+  useEffect(() => { fetchLoan(); fetchNotes(); fetchBankLinks(); fetchDocs() }, [fetchLoan, fetchNotes, fetchBankLinks, fetchDocs])
 
   async function saveLoan() {
     setSaving(true)
@@ -241,6 +271,24 @@ export default function LoanDetailPage() {
       body: JSON.stringify({ show_on_homepage: val }),
     })
     await fetchLoan()
+  }
+
+  async function uploadAdminDoc(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setDocUploading(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('doc_type', adminDocType)
+    await fetch(`/api/loans/${id}/documents`, { method: 'POST', body: fd })
+    await fetchDocs()
+    setDocUploading(false)
+    if (adminDocFileRef.current) adminDocFileRef.current.value = ''
+  }
+
+  async function deleteAdminDoc(docId: string) {
+    await fetch(`/api/loans/${id}/documents?doc_id=${docId}`, { method: 'DELETE' })
+    await fetchDocs()
   }
 
   function set(key: string, val: unknown) { setDraft((d) => ({ ...d, [key]: val })) }
@@ -562,6 +610,54 @@ export default function LoanDetailPage() {
           </div>
         </Section>
       )}
+
+      {/* ── Documents ── */}
+      <Section title="Documents">
+        <p className="text-xs text-gray-500 mb-3">
+          Upload broker agreements and other deal docs. Borrower-uploaded docs also appear here.
+        </p>
+        <div className="flex gap-2 items-center mb-4">
+          <select
+            value={adminDocType}
+            onChange={(e) => setAdminDocType(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+          >
+            {ADMIN_DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+          <input ref={adminDocFileRef} type="file" onChange={uploadAdminDoc} className="hidden" />
+          <button
+            onClick={() => adminDocFileRef.current?.click()}
+            disabled={docUploading}
+            className="border border-[#003087] text-[#003087] px-4 py-1.5 rounded text-sm hover:bg-blue-50 disabled:opacity-50"
+          >
+            {docUploading ? 'Uploading...' : '+ Upload'}
+          </button>
+        </div>
+        {docs.length === 0 ? (
+          <p className="text-sm text-gray-400 italic">No documents yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {docs.map((doc) => (
+              <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-200 text-sm">
+                <div>
+                  <p className="font-medium text-gray-800">{doc.file_name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {ADMIN_DOC_TYPES.find(t => t.value === doc.doc_type)?.label ?? doc.doc_type.replace(/_/g, ' ')}
+                    {' · '}{doc.uploaded_by_label}
+                    {doc.file_size ? ` · ${fmtSize(doc.file_size)}` : ''}
+                  </p>
+                </div>
+                <button
+                  onClick={() => deleteAdminDoc(doc.id)}
+                  className="text-xs text-red-500 hover:text-red-700 hover:underline ml-4 flex-shrink-0"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
 
       {/* ── Notes ── */}
       <Section title="Notes">
