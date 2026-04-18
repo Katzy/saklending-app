@@ -40,15 +40,15 @@ const STAGE_COLORS: Record<string, string> = {
 }
 
 const DOC_TYPES = [
-  { value: 'purchase_contract', label: 'Purchase Contract' },
-  { value: 'scope_of_work', label: 'Scope of Work & Budget' },
-  { value: 'appraisal', label: 'Appraisal' },
-  { value: 'environmental', label: 'Environmental Report' },
-  { value: 'rent_roll', label: 'Rent Roll' },
+  { value: 'pfs', label: 'Personal Financial Statement (PFS)' },
   { value: 't12', label: 'T-12 Operating Statement' },
+  { value: 'rent_roll', label: 'Rent Roll' },
+  { value: 'purchase_contract', label: 'Purchase Contract' },
+  { value: 'appraisal', label: 'Appraisal' },
+  { value: 'scope_of_work', label: 'Scope of Work & Budget' },
+  { value: 'environmental', label: 'Environmental Report' },
   { value: 'tax_return', label: 'Tax Return' },
   { value: 'bank_statement', label: 'Bank Statement' },
-  { value: 'pfs', label: 'Personal Financial Statement (PFS)' },
   { value: 'other', label: 'Other' },
 ]
 

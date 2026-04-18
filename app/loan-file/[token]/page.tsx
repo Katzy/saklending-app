@@ -14,8 +14,36 @@ type Loan = Record<string, any>
 
 type Package = { loan: Loan; contact: Contact | null; documents: Document[] }
 
+// Key documents the lender expects to see
+const KEY_DOCS = [
+  { value: 'pfs',              label: 'Personal Financial Statement (PFS)' },
+  { value: 't12',              label: 'T-12 Operating Statement' },
+  { value: 'rent_roll',        label: 'Rent Roll' },
+  { value: 'broker_agreement', label: 'Broker Agreement' },
+  { value: 'purchase_contract', label: 'Purchase Contract' },
+  { value: 'appraisal',        label: 'Appraisal' },
+]
+
+const ALL_DOC_LABELS: Record<string, string> = {
+  pfs: 'Personal Financial Statement (PFS)',
+  t12: 'T-12 Operating Statement',
+  rent_roll: 'Rent Roll',
+  broker_agreement: 'Broker Agreement',
+  purchase_contract: 'Purchase Contract',
+  appraisal: 'Appraisal',
+  environmental: 'Environmental Report',
+  scope_of_work: 'Scope of Work & Budget',
+  tax_return: 'Tax Return',
+  bank_statement: 'Bank Statement',
+  other: 'Other',
+}
+
 function fmt$(v: unknown) {
   const n = Number(v); if (!n) return '—'
+  return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 })
+}
+function fmt$null(v: unknown) {
+  const n = Number(v); if (!n) return null
   return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 })
 }
 function fmtPct(num: unknown, den: unknown) {
@@ -29,6 +57,15 @@ function calcNOI(loan: Loan) {
   const exp = Number(loan.annual_operating_expenses) || 0
   if (!gross) return null
   return gross * (1 - vac / 100) - exp
+}
+function calcNetWorth(loan: Loan) {
+  const assets = (Number(loan.total_re_value) || 0) + (Number(loan.cash_reserves) || 0)
+    + (Number(loan.investment_assets) || 0) + (Number(loan.personal_property_value) || 0)
+    + (Number(loan.other_business_value) || 0)
+  const liab = (Number(loan.total_mortgage_debt) || 0) + (Number(loan.credit_card_debt) || 0)
+    + (Number(loan.other_loans) || 0) + (Number(loan.taxes_bills_owed) || 0)
+  if (!assets && !liab) return null
+  return assets - liab
 }
 
 export default function BankPortalPage() {
@@ -124,8 +161,32 @@ export default function BankPortalPage() {
   if (!pkg) return null
   const { loan, contact, documents } = pkg
   const noi = calcNOI(loan)
+  const netWorth = calcNetWorth(loan)
   const ltv = fmtPct(loan.loan_amount, loan.purchase_price)
   const arvltv = fmtPct(loan.loan_amount, loan.arv)
+  const capRate = noi && loan.purchase_price ? fmtPct(noi, loan.purchase_price) : null
+
+  // Program display label
+  const programLabel: Record<string, string> = {
+    bridge: 'Bridge', permanent: 'Long Term', rehab: 'Rehab', ground_up: 'Ground Up Construction'
+  }
+
+  // Determine which key docs are uploaded (match by doc_type)
+  const uploadedTypes = new Set(documents.map(d => d.doc_type))
+  // For purchase loans, purchase_contract is relevant; hide if refinance
+  const isPurchase = loan.loan_purpose === 'purchase'
+  const relevantKeyDocs = KEY_DOCS.filter(d =>
+    d.value !== 'purchase_contract' || isPurchase
+  )
+  const keyDocUploaded = relevantKeyDocs.filter(d => uploadedTypes.has(d.value))
+  const keyDocMissing = relevantKeyDocs.filter(d => !uploadedTypes.has(d.value))
+  // Additional docs (uploaded but not in the key list)
+  const keyDocValues = new Set(KEY_DOCS.map(d => d.value))
+  const additionalDocs = documents.filter(d => !keyDocValues.has(d.doc_type))
+
+  const hasAnyFinancials = loan.gross_annual_income || loan.vacancy_factor_pct || loan.annual_operating_expenses
+  const hasAnyBorrowerFinancials = loan.total_re_value || loan.cash_reserves || loan.investment_assets ||
+    loan.total_mortgage_debt || loan.properties_owned
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -170,7 +231,62 @@ export default function BankPortalPage() {
           )}
         </div>
 
-        {/* Borrower — contact info redacted, underwriting info shown */}
+        {/* ── Loan Snapshot (key metrics at a glance) ── */}
+        <div className="bg-[#003087] rounded-lg p-5 text-white">
+          <p className="text-xs font-semibold uppercase tracking-widest text-blue-300 mb-3">Loan Snapshot</p>
+          {(loan.address_street || loan.address_city) && (
+            <p className="text-lg font-bold mb-1">
+              {[loan.address_street, loan.address_city, loan.address_state, loan.address_zip].filter(Boolean).join(', ')}
+            </p>
+          )}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+            <SnapStat label="Loan Amount" value={fmt$(loan.loan_amount)} />
+            <SnapStat label="Purpose" value={loan.loan_purpose?.replace(/_/g, ' ')} cap />
+            <SnapStat label="Program" value={programLabel[loan.loan_program] ?? loan.loan_program?.replace(/_/g, ' ')} />
+            <SnapStat label="Property Type" value={loan.property_type} />
+            {loan.interest_rate && <SnapStat label="Interest Rate" value={`${loan.interest_rate}%`} />}
+            {loan.loan_term_years && <SnapStat label="Fixed Term" value={`${loan.loan_term_years}yr`} />}
+            {loan.amortization_years && <SnapStat label="Amortization" value={`${loan.amortization_years}yr`} />}
+            {loan.interest_only && <SnapStat label="Interest Only" value="Yes" />}
+          </div>
+        </div>
+
+        {/* Key Metrics */}
+        {(ltv || arvltv || capRate || noi) && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {ltv && <MetricCard label="LTV" value={ltv} />}
+            {arvltv && <MetricCard label="ARV-LTV" value={arvltv} />}
+            {capRate && <MetricCard label="Cap Rate" value={capRate} />}
+            {noi && <MetricCard label="NOI" value={fmt$(noi)} />}
+          </div>
+        )}
+
+        {/* Package Checklist */}
+        <Section title="Package Checklist">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {relevantKeyDocs.map(doc => {
+              const uploaded = uploadedTypes.has(doc.value)
+              return (
+                <div key={doc.value} className={`flex items-center gap-3 p-3 rounded-lg border text-sm ${uploaded ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
+                  <span className="text-base flex-shrink-0">{uploaded ? '✅' : '⏳'}</span>
+                  <div>
+                    <p className={`font-medium ${uploaded ? 'text-green-800' : 'text-yellow-800'}`}>{doc.label}</p>
+                    <p className={`text-xs mt-0.5 ${uploaded ? 'text-green-600' : 'text-yellow-600'}`}>
+                      {uploaded ? 'Uploaded' : 'Pending'}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          {keyDocMissing.length > 0 && (
+            <p className="text-xs text-gray-400 mt-3 italic">
+              Pending items will be added as the file is assembled. Contact SAK Lending for status.
+            </p>
+          )}
+        </Section>
+
+        {/* Sponsor */}
         {contact && (
           <Section title="Sponsor">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
@@ -194,16 +310,19 @@ export default function BankPortalPage() {
         <Section title="Loan Request">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
             <Row label="Loan Amount" value={fmt$(loan.loan_amount)} />
-            <Row label="Purpose" value={loan.loan_purpose} cap />
-            <Row label="Program" value={loan.loan_program?.replace('_', ' ')} cap />
+            <Row label="Purpose" value={loan.loan_purpose?.replace(/_/g, ' ')} cap />
+            <Row label="Program" value={programLabel[loan.loan_program] ?? loan.loan_program?.replace(/_/g, ' ')} />
             <Row label="Financing" value={loan.financing_preference} cap />
-            <Row label="Property Type" value={loan.property_type} />
-            <Row label="State" value={loan.state} />
+            {loan.interest_rate && <Row label="Interest Rate" value={`${loan.interest_rate}%`} />}
+            {loan.loan_term_years && <Row label="Fixed Term" value={`${loan.loan_term_years}yr`} />}
+            {loan.amortization_years && <Row label="Amortization" value={`${loan.amortization_years}yr`} />}
+            {loan.interest_only && <Row label="Interest Only" value="Yes" />}
           </div>
           {loan.comments && <NoteBlock label="Comments" text={loan.comments} />}
+          {loan.full_loan_summary && <NoteBlock label="Loan Summary" text={loan.full_loan_summary} />}
         </Section>
 
-        {/* Property */}
+        {/* Property Details */}
         <Section title="Property Details">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
             {(loan.address_street || loan.address_city) && (
@@ -219,75 +338,60 @@ export default function BankPortalPage() {
             <Row label="Building Sq Ft" value={loan.building_sqft ? Number(loan.building_sqft).toLocaleString() + ' sf' : null} />
             <Row label="Year Built" value={loan.year_built} />
             <Row label="Occupancy" value={loan.occupancy_pct ? loan.occupancy_pct + '%' : null} />
-            <Row label="Annual Taxes" value={fmt$(loan.annual_taxes)} />
-            <Row label="Annual Insurance" value={fmt$(loan.annual_insurance)} />
+            <Row label="Annual Taxes" value={fmt$null(loan.annual_taxes)} />
+            <Row label="Annual Insurance" value={fmt$null(loan.annual_insurance)} />
+            {loan.nnn_leases && <Row label="NNN Leases" value="Yes" />}
           </div>
+          {loan.exit_strategy && <NoteBlock label="Exit Strategy" text={loan.exit_strategy} />}
         </Section>
 
         {/* Income & Expenses */}
-        {loan.gross_annual_income && (
-          <Section title="Income & Expenses">
+        <Section title="Income & Expenses">
+          {hasAnyFinancials ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <Row label="Gross Annual Income" value={fmt$(loan.gross_annual_income)} />
-              <Row label="Vacancy Factor" value={loan.vacancy_factor_pct ? loan.vacancy_factor_pct + '%' : '5%'} />
-              <Row label="Annual Expenses" value={fmt$(loan.annual_operating_expenses)} />
+              <Row label="Income Type" value={loan.income_actual_or_proforma} cap />
+              <Row label="Gross Annual Income" value={fmt$null(loan.gross_annual_income)} />
+              <Row label="Vacancy Factor" value={loan.vacancy_factor_pct ? loan.vacancy_factor_pct + '%' : null} />
+              <Row label="Annual Expenses" value={fmt$null(loan.annual_operating_expenses)} />
               {noi !== null && <Row label="NOI (calculated)" value={fmt$(noi)} highlight />}
+              {capRate && <Row label="Cap Rate (calculated)" value={capRate} highlight />}
             </div>
-          </Section>
-        )}
-
-        {/* Key Metrics */}
-        {(ltv || arvltv || loan.exit_strategy) && (
-          <Section title="Key Metrics">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {ltv && <Metric label="LTV" value={ltv} />}
-              {arvltv && <Metric label="ARV-LTV" value={arvltv} />}
-              {loan.nnn_leases && <Metric label="NNN Leases" value="Yes" />}
-            </div>
-            {loan.exit_strategy && <NoteBlock label="Exit Strategy" text={loan.exit_strategy} />}
-          </Section>
-        )}
+          ) : (
+            <p className="text-sm text-gray-400 italic">Operating income data will be provided with the T-12 and Rent Roll.</p>
+          )}
+        </Section>
 
         {/* Borrower Financials */}
-        {loan.total_re_value && (
-          <Section title="Borrower Financials">
+        <Section title="Borrower Financials">
+          {hasAnyBorrowerFinancials ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
               <Row label="Properties Owned" value={loan.properties_owned} />
-              <Row label="Total RE Value" value={fmt$(loan.total_re_value)} />
-              <Row label="Cash Reserves" value={fmt$(loan.cash_reserves)} />
-              <Row label="Investment Assets" value={fmt$(loan.investment_assets)} />
-              <Row label="Total Mortgage Debt" value={fmt$(loan.total_mortgage_debt)} />
+              <Row label="Total RE Value" value={fmt$null(loan.total_re_value)} />
+              <Row label="Cash Reserves" value={fmt$null(loan.cash_reserves)} />
+              <Row label="Investment Assets" value={fmt$null(loan.investment_assets)} />
+              <Row label="Total Mortgage Debt" value={fmt$null(loan.total_mortgage_debt)} />
+              {netWorth !== null && <Row label="Est. Net Worth" value={fmt$(netWorth)} highlight />}
             </div>
-          </Section>
-        )}
-
-        {/* Loan Summary */}
-        {loan.full_loan_summary && (
-          <Section title="Loan Summary">
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">{loan.full_loan_summary}</p>
-          </Section>
-        )}
+          ) : (
+            <p className="text-sm text-gray-400 italic">PFS and borrower financial details to be provided.</p>
+          )}
+        </Section>
 
         {/* Documents */}
         <Section title="Documents">
           {documents.length === 0 ? (
-            <p className="text-sm text-gray-400 italic">No documents uploaded yet.</p>
+            <p className="text-sm text-gray-400 italic">No documents uploaded yet. See checklist above for status.</p>
           ) : (
             <div className="space-y-2">
-              {documents.map((doc) => (
-                <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-200">
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{doc.file_name}</p>
-                    <p className="text-xs text-gray-400 capitalize mt-0.5">{doc.doc_type?.replace('_', ' ')}</p>
-                  </div>
-                  {doc.url && (
-                    <a href={doc.url} target="_blank" rel="noopener noreferrer"
-                      className="text-xs font-medium text-[#003087] border border-[#003087] px-3 py-1.5 rounded hover:bg-[#003087] hover:text-white transition">
-                      Download
-                    </a>
-                  )}
-                </div>
-              ))}
+              {/* Key docs first */}
+              {keyDocUploaded.map(kd => {
+                const doc = documents.find(d => d.doc_type === kd.value)!
+                return (
+                  <DocRow key={doc.id} doc={doc} />
+                )
+              })}
+              {/* Additional docs */}
+              {additionalDocs.map(doc => <DocRow key={doc.id} doc={doc} />)}
             </div>
           )}
         </Section>
@@ -309,8 +413,27 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
+function SnapStat({ label, value, cap }: { label: string; value: unknown; cap?: boolean }) {
+  if (!value) return null
+  return (
+    <div>
+      <p className="text-xs text-blue-300 uppercase tracking-wide mb-0.5">{label}</p>
+      <p className={`text-sm font-semibold text-white ${cap ? 'capitalize' : ''}`}>{String(value)}</p>
+    </div>
+  )
+}
+
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-blue-50 rounded-lg p-4 text-center border border-blue-100">
+      <p className="text-2xl font-bold text-[#003087]">{value}</p>
+      <p className="text-xs text-gray-500 mt-1">{label}</p>
+    </div>
+  )
+}
+
 function Row({ label, value, cap, highlight }: { label: string; value: unknown; cap?: boolean; highlight?: boolean }) {
-  if (value === null || value === undefined || value === '') return null
+  if (value === null || value === undefined || value === '' || value === '—') return null
   return (
     <div>
       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
@@ -321,20 +444,29 @@ function Row({ label, value, cap, highlight }: { label: string; value: unknown; 
   )
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-blue-50 rounded-lg p-4 text-center">
-      <p className="text-2xl font-bold text-[#003087]">{value}</p>
-      <p className="text-xs text-gray-500 mt-1">{label}</p>
-    </div>
-  )
-}
-
 function NoteBlock({ label, text }: { label: string; text: string }) {
   return (
     <div className="mt-4 pt-4 border-t border-gray-100">
       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">{label}</p>
       <p className="text-sm text-gray-700 whitespace-pre-wrap">{text}</p>
+    </div>
+  )
+}
+
+function DocRow({ doc }: { doc: Document }) {
+  const label = ALL_DOC_LABELS[doc.doc_type] ?? doc.doc_type.replace(/_/g, ' ')
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-200">
+      <div>
+        <p className="text-sm font-medium text-gray-800">{doc.file_name}</p>
+        <p className="text-xs text-gray-400 capitalize mt-0.5">{label}</p>
+      </div>
+      {doc.url && (
+        <a href={doc.url} target="_blank" rel="noopener noreferrer"
+          className="text-xs font-medium text-[#003087] border border-[#003087] px-3 py-1.5 rounded hover:bg-[#003087] hover:text-white transition flex-shrink-0 ml-4">
+          Download
+        </a>
+      )}
     </div>
   )
 }
