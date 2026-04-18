@@ -431,7 +431,7 @@ export default function LoanDetailPage() {
           <FSelect label="Fixed Term" k="loan_term_years" options={['1','3','5','10','30']} labels={['1yr Fixed','3yr Fixed','5yr Fixed','10yr Fixed','30yr Fixed']} numeric {...{ draft, set, editing }} />
           <FSelect label="Amortization" k="amortization_years" options={['20','25','30']} labels={['20yr','25yr','30yr']} numeric {...{ draft, set, editing }} />
           <FCheck label="Interest Only" k="interest_only" {...{ draft, set, editing }} />
-          <FSelect label="Purpose" k="loan_purpose" options={['purchase','refinance_rate_term','refinance_cash_out','refinance']} labels={['Purchase','Rate & Term Refinance','Cash-Out Refinance','Refinance (legacy)']} {...{ draft, set, editing }} />
+          <FSelect label="Purpose" k="loan_purpose" options={['purchase','refinance_rate_term','refinance_cash_out']} labels={['Purchase','Rate & Term Refinance','Cash-Out Refinance']} {...{ draft, set, editing }} />
           <FSelect label="Program" k="loan_program" options={['bridge','permanent','rehab','ground_up']} labels={['Bridge','Long Term','Rehab','Ground Up Construction']} {...{ draft, set, editing }} />
           <FSelect label="Financing Preference" k="financing_preference" options={['institutional','private']} {...{ draft, set, editing }} />
           <FSelect label="Property Type" k="property_type" options={PROPERTY_TYPES} {...{ draft, set, editing }} />
