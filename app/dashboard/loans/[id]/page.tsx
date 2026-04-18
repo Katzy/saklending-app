@@ -304,7 +304,7 @@ export default function LoanDetailPage() {
   type ContactShape = { first_name: string; last_name: string; email: string; entity_name?: string }
   const contact = (loan.contacts ?? null) as ContactShape | null
   const isFunded = loan.stage === 'funded'
-  const isRefinance = draft.loan_purpose === 'refinance'
+  const isRefinance = ['refinance', 'refinance_rate_term', 'refinance_cash_out'].includes(String(draft.loan_purpose))
   const isConstruction = ['rehab', 'ground_up'].includes(String(draft.loan_program))
   const isSFR = ['Single Family', 'Condo', 'Townhouse', '2-4 Unit'].includes(String(draft.property_type))
 
@@ -431,7 +431,7 @@ export default function LoanDetailPage() {
           <FSelect label="Fixed Term" k="loan_term_years" options={['1','3','5','10','30']} labels={['1yr Fixed','3yr Fixed','5yr Fixed','10yr Fixed','30yr Fixed']} numeric {...{ draft, set, editing }} />
           <FSelect label="Amortization" k="amortization_years" options={['20','25','30']} labels={['20yr','25yr','30yr']} numeric {...{ draft, set, editing }} />
           <FCheck label="Interest Only" k="interest_only" {...{ draft, set, editing }} />
-          <FSelect label="Purpose" k="loan_purpose" options={['purchase','refinance']} {...{ draft, set, editing }} />
+          <FSelect label="Purpose" k="loan_purpose" options={['purchase','refinance_rate_term','refinance_cash_out','refinance']} labels={['Purchase','Rate & Term Refinance','Cash-Out Refinance','Refinance (legacy)']} {...{ draft, set, editing }} />
           <FSelect label="Program" k="loan_program" options={['bridge','permanent','rehab','ground_up']} labels={['Bridge','Long Term','Rehab','Ground Up Construction']} {...{ draft, set, editing }} />
           <FSelect label="Financing Preference" k="financing_preference" options={['institutional','private']} {...{ draft, set, editing }} />
           <FSelect label="Property Type" k="property_type" options={PROPERTY_TYPES} {...{ draft, set, editing }} />
