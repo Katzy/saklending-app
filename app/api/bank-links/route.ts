@@ -4,10 +4,20 @@ import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import nodemailer from 'nodemailer'
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-})
+function getTransporter() {
+  if (process.env.RESEND_API_KEY) {
+    return nodemailer.createTransport({
+      host: 'smtp.resend.com',
+      port: 465,
+      secure: true,
+      auth: { user: 'resend', pass: process.env.RESEND_API_KEY },
+    })
+  }
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+  })
+}
 
 function fmt$(v: unknown) {
   const n = Number(v)
@@ -105,8 +115,8 @@ export async function POST(req: NextRequest) {
     `
 
     try {
-      await transporter.sendMail({
-        from: `"SAK Lending" <${process.env.EMAIL_USER}>`,
+      await getTransporter().sendMail({
+        from: '"SAK Lending" <support@saklending.com>',
         to: recipient_email,
         subject: `Loan Package${propertyAddress ? ` — ${propertyAddress}` : ''}`,
         html,
