@@ -14,17 +14,22 @@ type Loan = Record<string, any>
 
 type Package = { loan: Loan; contact: Contact | null; documents: Document[] }
 
-// Key documents the lender expects to see
-const KEY_DOCS = [
-  { value: 'pfs',              label: 'Personal Financial Statement (PFS)' },
-  { value: 't12',              label: 'T-12 Operating Statement' },
-  { value: 'rent_roll',        label: 'Rent Roll' },
-  { value: 'broker_agreement', label: 'Broker Agreement' },
-  { value: 'purchase_contract', label: 'Purchase Contract' },
-  { value: 'appraisal',        label: 'Appraisal' },
-]
+const PURPOSE_LABEL: Record<string, string> = {
+  purchase: 'Purchase',
+  refinance: 'Refinance',
+  refinance_rate_term: 'Rate & Term Refinance',
+  refinance_cash_out: 'Cash-Out Refinance',
+  ground_up: 'Ground Up Construction',
+}
 
-const ALL_DOC_LABELS: Record<string, string> = {
+const PROGRAM_LABEL: Record<string, string> = {
+  bridge: 'Short Term Bridge',
+  permanent: 'Long Term Permanent',
+  rehab: 'Rehab',
+  ground_up: 'Ground Up Construction',
+}
+
+const DOC_LABEL: Record<string, string> = {
   pfs: 'Personal Financial Statement (PFS)',
   t12: 'T-12 Operating Statement',
   rent_roll: 'Rent Roll',
@@ -162,27 +167,14 @@ export default function BankPortalPage() {
   const { loan, contact, documents } = pkg
   const noi = calcNOI(loan)
   const netWorth = calcNetWorth(loan)
+
+  // LTV from current property value (purchase_price); ARV-LTV from arv
   const ltv = fmtPct(loan.loan_amount, loan.purchase_price)
   const arvltv = fmtPct(loan.loan_amount, loan.arv)
   const capRate = noi && loan.purchase_price ? fmtPct(noi, loan.purchase_price) : null
 
-  // Program display label
-  const programLabel: Record<string, string> = {
-    bridge: 'Bridge', permanent: 'Long Term', rehab: 'Rehab', ground_up: 'Ground Up Construction'
-  }
-
-  // Determine which key docs are uploaded (match by doc_type)
-  const uploadedTypes = new Set(documents.map(d => d.doc_type))
-  // For purchase loans, purchase_contract is relevant; hide if refinance
-  const isPurchase = loan.loan_purpose === 'purchase'
-  const relevantKeyDocs = KEY_DOCS.filter(d =>
-    d.value !== 'purchase_contract' || isPurchase
-  )
-  const keyDocUploaded = relevantKeyDocs.filter(d => uploadedTypes.has(d.value))
-  const keyDocMissing = relevantKeyDocs.filter(d => !uploadedTypes.has(d.value))
-  // Additional docs (uploaded but not in the key list)
-  const keyDocValues = new Set(KEY_DOCS.map(d => d.value))
-  const additionalDocs = documents.filter(d => !keyDocValues.has(d.doc_type))
+  const purposeDisplay = PURPOSE_LABEL[loan.loan_purpose] ?? loan.loan_purpose?.replace(/_/g, ' ')
+  const programDisplay = PROGRAM_LABEL[loan.loan_program] ?? loan.loan_program?.replace(/_/g, ' ')
 
   const hasAnyFinancials = loan.gross_annual_income || loan.vacancy_factor_pct || loan.annual_operating_expenses
   const hasAnyBorrowerFinancials = loan.total_re_value || loan.cash_reserves || loan.investment_assets ||
@@ -231,23 +223,19 @@ export default function BankPortalPage() {
           )}
         </div>
 
-        {/* ── Loan Snapshot (key metrics at a glance) ── */}
+        {/* ── Loan Snapshot ── */}
         <div className="bg-[#003087] rounded-lg p-5 text-white">
           <p className="text-xs font-semibold uppercase tracking-widest text-blue-300 mb-3">Loan Snapshot</p>
           {(loan.address_street || loan.address_city) && (
-            <p className="text-lg font-bold mb-1">
+            <p className="text-lg font-bold mb-3">
               {[loan.address_street, loan.address_city, loan.address_state, loan.address_zip].filter(Boolean).join(', ')}
             </p>
           )}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <SnapStat label="Loan Amount" value={fmt$(loan.loan_amount)} />
-            <SnapStat label="Purpose" value={loan.loan_purpose?.replace(/_/g, ' ')} cap />
-            <SnapStat label="Program" value={programLabel[loan.loan_program] ?? loan.loan_program?.replace(/_/g, ' ')} />
+            <SnapStat label="Purpose" value={purposeDisplay} />
+            <SnapStat label="Program" value={programDisplay} />
             <SnapStat label="Property Type" value={loan.property_type} />
-            {loan.interest_rate && <SnapStat label="Interest Rate" value={`${loan.interest_rate}%`} />}
-            {loan.loan_term_years && <SnapStat label="Fixed Term" value={`${loan.loan_term_years}yr`} />}
-            {loan.amortization_years && <SnapStat label="Amortization" value={`${loan.amortization_years}yr`} />}
-            {loan.interest_only && <SnapStat label="Interest Only" value="Yes" />}
           </div>
         </div>
 
@@ -260,31 +248,6 @@ export default function BankPortalPage() {
             {noi && <MetricCard label="NOI" value={fmt$(noi)} />}
           </div>
         )}
-
-        {/* Package Checklist */}
-        <Section title="Package Checklist">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {relevantKeyDocs.map(doc => {
-              const uploaded = uploadedTypes.has(doc.value)
-              return (
-                <div key={doc.value} className={`flex items-center gap-3 p-3 rounded-lg border text-sm ${uploaded ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
-                  <span className="text-base flex-shrink-0">{uploaded ? '✅' : '⏳'}</span>
-                  <div>
-                    <p className={`font-medium ${uploaded ? 'text-green-800' : 'text-yellow-800'}`}>{doc.label}</p>
-                    <p className={`text-xs mt-0.5 ${uploaded ? 'text-green-600' : 'text-yellow-600'}`}>
-                      {uploaded ? 'Uploaded' : 'Pending'}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          {keyDocMissing.length > 0 && (
-            <p className="text-xs text-gray-400 mt-3 italic">
-              Pending items will be added as the file is assembled. Contact SAK Lending for status.
-            </p>
-          )}
-        </Section>
 
         {/* Sponsor */}
         {contact && (
@@ -310,13 +273,15 @@ export default function BankPortalPage() {
         <Section title="Loan Request">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
             <Row label="Loan Amount" value={fmt$(loan.loan_amount)} />
-            <Row label="Purpose" value={loan.loan_purpose?.replace(/_/g, ' ')} cap />
-            <Row label="Program" value={programLabel[loan.loan_program] ?? loan.loan_program?.replace(/_/g, ' ')} />
-            <Row label="Financing" value={loan.financing_preference} cap />
-            {loan.interest_rate && <Row label="Interest Rate" value={`${loan.interest_rate}%`} />}
-            {loan.loan_term_years && <Row label="Fixed Term" value={`${loan.loan_term_years}yr`} />}
+            <Row label="Purpose" value={purposeDisplay} />
+            <Row label="Program" value={programDisplay} />
+            {loan.loan_term_years && <Row label="Term" value={`${loan.loan_term_years}yr`} />}
+            {loan.interest_rate && <Row label="Rate Requested" value={`${loan.interest_rate}%`} />}
             {loan.amortization_years && <Row label="Amortization" value={`${loan.amortization_years}yr`} />}
             {loan.interest_only && <Row label="Interest Only" value="Yes" />}
+            {loan.purchase_price && <Row label="Current Property Value" value={fmt$(loan.purchase_price)} />}
+            {ltv && <Row label="LTV" value={ltv} highlight />}
+            {arvltv && <Row label="ARV-LTV" value={arvltv} highlight />}
           </div>
           {loan.comments && <NoteBlock label="Comments" text={loan.comments} />}
           {loan.full_loan_summary && <NoteBlock label="Loan Summary" text={loan.full_loan_summary} />}
@@ -331,8 +296,7 @@ export default function BankPortalPage() {
                 <p className="text-gray-800">{[loan.address_street, loan.address_city, loan.address_state, loan.address_zip].filter(Boolean).join(', ')}</p>
               </div>
             )}
-            <Row label="Purchase Price" value={fmt$(loan.purchase_price)} />
-            <Row label="ARV" value={fmt$(loan.arv)} />
+            <Row label="ARV" value={fmt$null(loan.arv)} />
             <Row label="Property Use" value={loan.property_use} cap />
             <Row label="Total Units" value={loan.total_units} />
             <Row label="Building Sq Ft" value={loan.building_sqft ? Number(loan.building_sqft).toLocaleString() + ' sf' : null} />
@@ -380,18 +344,23 @@ export default function BankPortalPage() {
         {/* Documents */}
         <Section title="Documents">
           {documents.length === 0 ? (
-            <p className="text-sm text-gray-400 italic">No documents uploaded yet. See checklist above for status.</p>
+            <p className="text-sm text-gray-400 italic">No documents uploaded yet.</p>
           ) : (
             <div className="space-y-2">
-              {/* Key docs first */}
-              {keyDocUploaded.map(kd => {
-                const doc = documents.find(d => d.doc_type === kd.value)!
-                return (
-                  <DocRow key={doc.id} doc={doc} />
-                )
-              })}
-              {/* Additional docs */}
-              {additionalDocs.map(doc => <DocRow key={doc.id} doc={doc} />)}
+              {documents.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-200">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{doc.file_name}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{DOC_LABEL[doc.doc_type] ?? doc.doc_type.replace(/_/g, ' ')}</p>
+                  </div>
+                  {doc.url && (
+                    <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                      className="text-xs font-medium text-[#003087] border border-[#003087] px-3 py-1.5 rounded hover:bg-[#003087] hover:text-white transition flex-shrink-0 ml-4">
+                      Download
+                    </a>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </Section>
@@ -413,12 +382,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-function SnapStat({ label, value, cap }: { label: string; value: unknown; cap?: boolean }) {
+function SnapStat({ label, value }: { label: string; value: unknown }) {
   if (!value) return null
   return (
     <div>
       <p className="text-xs text-blue-300 uppercase tracking-wide mb-0.5">{label}</p>
-      <p className={`text-sm font-semibold text-white ${cap ? 'capitalize' : ''}`}>{String(value)}</p>
+      <p className="text-sm font-semibold text-white">{String(value)}</p>
     </div>
   )
 }
@@ -449,24 +418,6 @@ function NoteBlock({ label, text }: { label: string; text: string }) {
     <div className="mt-4 pt-4 border-t border-gray-100">
       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">{label}</p>
       <p className="text-sm text-gray-700 whitespace-pre-wrap">{text}</p>
-    </div>
-  )
-}
-
-function DocRow({ doc }: { doc: Document }) {
-  const label = ALL_DOC_LABELS[doc.doc_type] ?? doc.doc_type.replace(/_/g, ' ')
-  return (
-    <div className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-200">
-      <div>
-        <p className="text-sm font-medium text-gray-800">{doc.file_name}</p>
-        <p className="text-xs text-gray-400 capitalize mt-0.5">{label}</p>
-      </div>
-      {doc.url && (
-        <a href={doc.url} target="_blank" rel="noopener noreferrer"
-          className="text-xs font-medium text-[#003087] border border-[#003087] px-3 py-1.5 rounded hover:bg-[#003087] hover:text-white transition flex-shrink-0 ml-4">
-          Download
-        </a>
-      )}
     </div>
   )
 }
