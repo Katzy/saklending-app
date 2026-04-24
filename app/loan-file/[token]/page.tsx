@@ -168,10 +168,9 @@ export default function BankPortalPage() {
   const noi = calcNOI(loan)
   const netWorth = calcNetWorth(loan)
 
-  // LTV from current property value (purchase_price); ARV-LTV from arv
-  const ltv = fmtPct(loan.loan_amount, loan.purchase_price)
+  const ltv = fmtPct(loan.loan_amount, loan.appraised_value)
   const arvltv = fmtPct(loan.loan_amount, loan.arv)
-  const capRate = noi && loan.purchase_price ? fmtPct(noi, loan.purchase_price) : null
+  const capRate = noi && loan.appraised_value ? fmtPct(noi, loan.appraised_value) : null
 
   const purposeDisplay = PURPOSE_LABEL[loan.loan_purpose] ?? loan.loan_purpose?.replace(/_/g, ' ')
   const programDisplay = PROGRAM_LABEL[loan.loan_program] ?? loan.loan_program?.replace(/_/g, ' ')
@@ -278,7 +277,8 @@ export default function BankPortalPage() {
             {loan.interest_rate && <Row label="Rate Requested" value={`${loan.interest_rate}%`} />}
             {loan.amortization_years && <Row label="Amortization" value={`${loan.amortization_years}yr`} />}
             {loan.interest_only && <Row label="Interest Only" value="Yes" />}
-            {loan.purchase_price && <Row label="Current Property Value" value={fmt$(loan.purchase_price)} />}
+            {loan.purchase_price && <Row label="Purchase Price" value={fmt$(loan.purchase_price)} />}
+            {loan.appraised_value && <Row label="Appraised Value" value={fmt$(loan.appraised_value)} />}
             {ltv && <Row label="LTV" value={ltv} highlight />}
             {arvltv && <Row label="ARV-LTV" value={arvltv} highlight />}
           </div>

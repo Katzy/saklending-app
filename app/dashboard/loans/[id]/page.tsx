@@ -311,7 +311,7 @@ export default function LoanDetailPage() {
   const noi = calcNOI(draft)
   const netWorth = calcNetWorth(draft)
   const totalProject = calcTotalProject(draft)
-  const ltv = pct(draft.loan_amount, draft.purchase_price)
+  const ltv = pct(draft.loan_amount, draft.appraised_value)
   const arvltv = pct(draft.loan_amount, draft.arv)
   const ltc = pct(draft.loan_amount, totalProject)
 
@@ -450,6 +450,7 @@ export default function LoanDetailPage() {
           <F label="State" k="address_state" {...{ draft, set, editing }} />
           <F label="Zip" k="address_zip" {...{ draft, set, editing }} />
           <F label="Purchase Price" k="purchase_price" type="number" prefix="$" {...{ draft, set, editing }} />
+          <F label="Appraised Value" k="appraised_value" type="number" prefix="$" {...{ draft, set, editing }} />
           <F label="ARV (After Repair Value)" k="arv" type="number" prefix="$" {...{ draft, set, editing }} />
           <FSelect label="Property Use" k="property_use" options={['investment','owner_user']} {...{ draft, set, editing }} />
           <F label="Total Units" k="total_units" type="number" {...{ draft, set, editing }} />
