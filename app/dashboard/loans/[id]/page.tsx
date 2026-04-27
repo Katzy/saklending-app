@@ -9,6 +9,7 @@ import StreetView from '@/components/StreetView'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LoanData = Record<string, any>
 type Note = { id: string; created_at: string; content: string }
+type Task = { id: string; title: string; notes: string | null; due_date: string | null; completed: boolean; created_at: string }
 type AdminDoc = { id: string; doc_type: string; file_name: string; file_size: number | null; uploaded_by_label: string; created_at: string }
 
 const ADMIN_DOC_TYPES = [
@@ -112,6 +113,12 @@ export default function LoanDetailPage() {
   const [adminDocType, setAdminDocType] = useState('broker_agreement')
   const adminDocFileRef = useRef<HTMLInputElement>(null)
 
+  // Tasks
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [taskTitle, setTaskTitle] = useState('')
+  const [taskDate, setTaskDate] = useState('')
+  const [taskAdding, setTaskAdding] = useState(false)
+
   const fetchLoan = useCallback(async () => {
     const res = await fetch(`/api/loans/${id}`)
     if (!res.ok) { setLoading(false); return }
@@ -141,7 +148,12 @@ export default function LoanDetailPage() {
     if (res.ok) setDocs(await res.json())
   }, [id])
 
-  useEffect(() => { fetchLoan(); fetchNotes(); fetchBankLinks(); fetchDocs() }, [fetchLoan, fetchNotes, fetchBankLinks, fetchDocs])
+  const fetchTasks = useCallback(async () => {
+    const res = await fetch(`/api/tasks?loan_id=${id}`)
+    if (res.ok) setTasks(await res.json())
+  }, [id])
+
+  useEffect(() => { fetchLoan(); fetchNotes(); fetchBankLinks(); fetchDocs(); fetchTasks() }, [fetchLoan, fetchNotes, fetchBankLinks, fetchDocs, fetchTasks])
 
   async function saveLoan() {
     setSaving(true)
@@ -271,6 +283,34 @@ export default function LoanDetailPage() {
       body: JSON.stringify({ show_on_homepage: val }),
     })
     await fetchLoan()
+  }
+
+  async function addTask(e: React.FormEvent) {
+    e.preventDefault()
+    if (!taskTitle.trim()) return
+    setTaskAdding(true)
+    await fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: taskTitle, due_date: taskDate || null, loan_id: id }),
+    })
+    setTaskTitle(''); setTaskDate('')
+    await fetchTasks()
+    setTaskAdding(false)
+  }
+
+  async function toggleTask(task: Task) {
+    await fetch(`/api/tasks/${task.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed: !task.completed }),
+    })
+    await fetchTasks()
+  }
+
+  async function deleteTask(taskId: string) {
+    await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' })
+    await fetchTasks()
   }
 
   async function uploadAdminDoc(e: React.ChangeEvent<HTMLInputElement>) {
@@ -611,6 +651,57 @@ export default function LoanDetailPage() {
           </div>
         </Section>
       )}
+
+      {/* ── Tasks ── */}
+      <Section title="Tasks">
+        <form onSubmit={addTask} className="flex gap-2 mb-4">
+          <input
+            value={taskTitle}
+            onChange={e => setTaskTitle(e.target.value)}
+            placeholder="Add a task..."
+            className="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+          />
+          <input
+            type="date"
+            value={taskDate}
+            onChange={e => setTaskDate(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+          />
+          <button type="submit" disabled={taskAdding || !taskTitle.trim()}
+            className="bg-[#003087] text-white px-3 py-1.5 rounded text-sm hover:bg-[#002070] disabled:opacity-50">
+            Add
+          </button>
+        </form>
+        {tasks.length === 0 ? (
+          <p className="text-sm text-gray-400 italic">No tasks yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {tasks.map(task => {
+              const isOpen = !task.completed
+              return (
+                <div key={task.id} className={`flex items-center gap-3 p-3 rounded-lg border text-sm group ${isOpen ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-50 opacity-60'}`}>
+                  <button
+                    onClick={() => toggleTask(task)}
+                    className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${task.completed ? 'bg-[#003087] border-[#003087]' : 'border-gray-300 hover:border-[#003087]'}`}
+                  >
+                    {task.completed && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                  </button>
+                  <p className={`flex-1 ${task.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>{task.title}</p>
+                  {task.due_date && (
+                    <span className="text-xs text-gray-400 flex-shrink-0">
+                      {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  )}
+                  <button onClick={() => deleteTask(task.id)}
+                    className="text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition text-xs flex-shrink-0">
+                    ✕
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </Section>
 
       {/* ── Documents ── */}
       <Section title="Documents">
