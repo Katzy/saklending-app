@@ -9,6 +9,12 @@ const SAK_EMAIL = 'scottalankatz@gmail.com'
 const SAK_NAME = 'Scott Katz'
 
 export async function POST(req: NextRequest) {
+  // Validate env vars are present
+  if (!DOCUSEAL_API_KEY || !DOCUSEAL_API_URL || !TEMPLATE_ID_1 || !TEMPLATE_ID_2) {
+    console.error('Missing Docuseal env vars', { DOCUSEAL_API_URL, DOCUSEAL_API_KEY: !!DOCUSEAL_API_KEY, TEMPLATE_ID_1, TEMPLATE_ID_2 })
+    return NextResponse.json({ error: 'Docuseal is not configured on this server' }, { status: 500 })
+  }
+
   const body = await req.json()
   const {
     // Mode A: existing loan

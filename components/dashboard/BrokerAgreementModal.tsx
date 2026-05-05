@@ -69,7 +69,9 @@ export default function BrokerAgreementModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      const json = await res.json()
+      const text = await res.text()
+      let json: { error?: string; ok?: boolean; loan_id?: string } = {}
+      try { json = JSON.parse(text) } catch { /* non-JSON response */ }
       if (!res.ok) {
         setError(json.error ?? 'Failed to send agreement')
         return

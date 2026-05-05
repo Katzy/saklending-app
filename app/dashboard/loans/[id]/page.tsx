@@ -364,7 +364,9 @@ export default function LoanDetailPage() {
           }),
         }),
       })
-      const json = await res.json()
+      const text = await res.text()
+      let json: { error?: string; ok?: boolean } = {}
+      try { json = JSON.parse(text) } catch { /* non-JSON response */ }
       if (!res.ok) {
         setAgreementError(json.error ?? 'Failed to send agreement')
       } else {
