@@ -5,7 +5,7 @@ const DOCUSEAL_API_URL = process.env.DOCUSEAL_API_URL!
 const DOCUSEAL_API_KEY = process.env.DOCUSEAL_API_KEY!
 const TEMPLATE_ID_1 = process.env.DOCUSEAL_TEMPLATE_ID_1!
 const TEMPLATE_ID_2 = process.env.DOCUSEAL_TEMPLATE_ID_2!
-const SAK_EMAIL = 'scottalankatz@gmail.com'
+const SAK_EMAIL = 'scott@saklending.com'
 const SAK_NAME = 'Scott Katz'
 
 export async function POST(req: NextRequest) {
