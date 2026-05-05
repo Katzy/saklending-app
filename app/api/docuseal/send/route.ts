@@ -82,6 +82,12 @@ export async function POST(req: NextRequest) {
       if (loanErr || !newLoan) return NextResponse.json({ error: loanErr?.message ?? 'Failed to create loan' }, { status: 500 })
       resolvedLoanId = newLoan.id
 
+      // Create property record for the borrower's property list
+      await supabase.from('properties').insert({
+        contact_id,
+        address_street: inputAddress,
+      })
+
     // ── Mode C: new contact + new loan ────────────────────────────────
     } else if (first_name && last_name && inputEmail && inputAddress) {
       const { data: newContact, error: contactErr } = await supabase
@@ -103,6 +109,12 @@ export async function POST(req: NextRequest) {
       propertyAddress = inputAddress
       resolvedLoanId = newLoan.id
 
+      // Create property record for the borrower's property list
+      await supabase.from('properties').insert({
+        contact_id: newContact.id,
+        address_street: inputAddress,
+      })
+
     } else {
       return NextResponse.json(
         { error: 'Provide loan_id, contact_id, or first_name/last_name/email/property_address' },
@@ -112,6 +124,19 @@ export async function POST(req: NextRequest) {
 
     const twoBorrowers = !!(borrower_2_name && borrower_2_email)
     const templateId = twoBorrowers ? TEMPLATE_ID_2 : TEMPLATE_ID_1
+    const borrowerFirstName = borrowerName.split(' ')[0]
+
+    const SUBJECT = 'SAK Lending Broker Agreement - Signature needed'
+
+    const borrowerMessage = {
+      subject: SUBJECT,
+      body: `Hi ${borrowerFirstName},\n\nThe link below will take you to my broker agreement. It's non-exclusive and does not obligate you to close a loan with me. It states my fees and highlights that I will only get paid if you fund a loan from a lender that I have facilitated for you.\n\nSAK Lending`,
+    }
+
+    const sakMessage = {
+      subject: SUBJECT,
+      body: `${borrowerName} has been sent a broker agreement for ${propertyAddress}. Please review and countersign below.\n\nSAK Lending`,
+    }
 
     const prefilledFields = [
       { name: twoBorrowers ? 'borrower_1_name' : 'borrower_name', default_value: borrowerName, readonly: true },
@@ -121,14 +146,14 @@ export async function POST(req: NextRequest) {
 
     const submitters = twoBorrowers
       ? [
-          { role: 'First Party',  name: borrowerName,    email: borrowerEmail,    fields: prefilledFields },
+          { role: 'First Party',  name: borrowerName,    email: borrowerEmail,    fields: prefilledFields, message: borrowerMessage },
           { role: 'Second Party', name: borrower_2_name, email: borrower_2_email,
-            fields: [{ name: 'borrower_2_name', default_value: borrower_2_name, readonly: true }] },
-          { role: 'Third Party',  name: SAK_NAME,        email: SAK_EMAIL },
+            fields: [{ name: 'borrower_2_name', default_value: borrower_2_name, readonly: true }], message: { subject: SUBJECT, body: `Hi ${borrower_2_name.split(' ')[0]},\n\nThe link below will take you to my broker agreement. It's non-exclusive and does not obligate you to close a loan with me. It states my fees and highlights that I will only get paid if you fund a loan from a lender that I have facilitated for you.\n\nSAK Lending` } },
+          { role: 'Third Party',  name: SAK_NAME, email: SAK_EMAIL, message: sakMessage },
         ]
       : [
-          { role: 'First Party',  name: borrowerName, email: borrowerEmail, fields: prefilledFields },
-          { role: 'Second Party', name: SAK_NAME,     email: SAK_EMAIL },
+          { role: 'First Party',  name: borrowerName, email: borrowerEmail, fields: prefilledFields, message: borrowerMessage },
+          { role: 'Second Party', name: SAK_NAME,     email: SAK_EMAIL,     message: sakMessage },
         ]
 
     const dsRes = await fetch(`${DOCUSEAL_API_URL}/submissions`, {
