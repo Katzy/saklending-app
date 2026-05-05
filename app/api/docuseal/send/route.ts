@@ -50,6 +50,8 @@ export async function POST(req: NextRequest) {
       .single()
     if (!contact) return NextResponse.json({ error: 'Contact not found' }, { status: 404 })
 
+    if (!contact.email) return NextResponse.json({ error: 'Borrower has no email address on file. Add one to their contact record first.' }, { status: 400 })
+
     borrowerName = `${contact.first_name} ${contact.last_name}`
     borrowerEmail = contact.email
     propertyAddress = [
@@ -58,6 +60,8 @@ export async function POST(req: NextRequest) {
       loan.address_state,
       loan.address_zip,
     ].filter(Boolean).join(', ')
+
+    if (!propertyAddress) return NextResponse.json({ error: 'This loan has no property address on file.' }, { status: 400 })
 
   // ── Mode B: existing contact, create loan ──────────────────────────
   } else if (contact_id) {

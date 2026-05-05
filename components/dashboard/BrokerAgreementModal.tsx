@@ -3,6 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+function formatBrokerFee(pct: string): string {
+  const num = parseFloat(pct)
+  if (isNaN(num)) return pct
+  const bps = Math.round(num * 100)
+  return `${bps} basis points (${num.toFixed(2)}%)`
+}
+
 type Props = {
   onClose: () => void
   // Mode A: existing loan (handled on loan page, not here)
@@ -39,7 +46,7 @@ export default function BrokerAgreementModal({
     setSending(true)
     setError(null)
 
-    const payload: Record<string, string> = { broker_fee: brokerFee }
+    const payload: Record<string, string> = { broker_fee: formatBrokerFee(brokerFee) }
 
     if (contactId) {
       payload.contact_id = contactId
@@ -141,13 +148,21 @@ export default function BrokerAgreementModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Broker Fee</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Broker Fee (%)</label>
             <input
+              type="number"
+              step="0.01"
+              min="0"
               value={brokerFee}
               onChange={(e) => setBrokerFee(e.target.value)}
-              placeholder="e.g. 150 basis points (1.50%)"
+              placeholder="e.g. 1.5"
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
             />
+            {brokerFee && !isNaN(parseFloat(brokerFee)) && (
+              <p className="text-xs text-gray-500 mt-1">
+                Will read: <span className="font-medium text-gray-700">{formatBrokerFee(brokerFee)}</span>
+              </p>
+            )}
           </div>
 
           <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">

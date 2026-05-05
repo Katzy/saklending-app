@@ -23,6 +23,13 @@ const ADMIN_DOC_TYPES = [
   { value: 'other', label: 'Other' },
 ]
 
+function formatBrokerFee(pct: string): string {
+  const num = parseFloat(pct)
+  if (isNaN(num)) return pct
+  const bps = Math.round(num * 100)
+  return `${bps} basis points (${num.toFixed(2)}%)`
+}
+
 function fmtSize(bytes: number | null) {
   if (!bytes) return ''
   if (bytes < 1024) return `${bytes} B`
@@ -349,7 +356,7 @@ export default function LoanDetailPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         loan_id: id,
-        broker_fee: agreementBrokerFee,
+        broker_fee: formatBrokerFee(agreementBrokerFee),
         ...(agreementTwoBorrowers && {
           borrower_2_name: agreementBorrower2Name,
           borrower_2_email: agreementBorrower2Email,
@@ -968,13 +975,21 @@ export default function LoanDetailPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Broker Fee</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Broker Fee (%)</label>
                 <input
+                  type="number"
+                  step="0.01"
+                  min="0"
                   value={agreementBrokerFee}
                   onChange={(e) => setAgreementBrokerFee(e.target.value)}
-                  placeholder="e.g. 150 basis points (1.50%)"
+                  placeholder="e.g. 1.5"
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
                 />
+                {agreementBrokerFee && !isNaN(parseFloat(agreementBrokerFee)) && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Will read: <span className="font-medium text-gray-700">{formatBrokerFee(agreementBrokerFee)}</span>
+                  </p>
+                )}
               </div>
 
               <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
