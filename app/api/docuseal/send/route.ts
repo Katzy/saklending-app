@@ -149,15 +149,17 @@ export async function POST(req: NextRequest) {
       { name: 'broker_fee', default_value: broker_fee, readonly: true },
     ]
 
+    const loanMeta = resolvedLoanId ? { metadata: { loan_id: resolvedLoanId } } : {}
+
     const submitters = twoBorrowers
       ? [
-          { role: 'First Party',  name: borrowerName,    email: borrowerEmail,    fields: prefilledFields, message: borrowerMessage, order: 1 },
+          { role: 'First Party',  name: borrowerName,    email: borrowerEmail,    fields: prefilledFields, message: borrowerMessage, order: 1, ...loanMeta },
           { role: 'Second Party', name: borrower_2_name, email: borrower_2_email,
             fields: [{ name: 'borrower_2_name', default_value: borrower_2_name, readonly: true }], message: coborrowerMessage(borrower_2_name.split(' ')[0]), order: 1 },
           { role: 'Third Party',  name: SAK_NAME, email: SAK_EMAIL, message: sakMessage, order: 1 },
         ]
       : [
-          { role: 'First Party',  name: borrowerName, email: borrowerEmail, fields: prefilledFields, message: borrowerMessage, order: 1 },
+          { role: 'First Party',  name: borrowerName, email: borrowerEmail, fields: prefilledFields, message: borrowerMessage, order: 1, ...loanMeta },
           { role: 'Second Party', name: SAK_NAME,     email: SAK_EMAIL,     message: sakMessage,     order: 1 },
         ]
 

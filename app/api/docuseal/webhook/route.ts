@@ -11,7 +11,10 @@ export async function POST(req: NextRequest) {
   }
 
   const submission = body.data
-  const loanId = submission?.metadata?.loan_id
+  // loan_id is stored on the First Party submitter's metadata
+  const loanId = submission?.submitters?.find(
+    (s: { metadata?: { loan_id?: string } }) => s.metadata?.loan_id
+  )?.metadata?.loan_id ?? submission?.metadata?.loan_id
   console.log('[docuseal/webhook] loan_id:', loanId, '| documents:', submission?.documents?.length ?? 0)
 
   if (!loanId) {
