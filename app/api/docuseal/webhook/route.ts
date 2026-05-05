@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
+  console.log('[docuseal/webhook] event_type:', body.event_type)
 
   // Only act on fully completed submissions
   if (body.event_type !== 'submission.completed') {
@@ -11,11 +12,19 @@ export async function POST(req: NextRequest) {
 
   const submission = body.data
   const loanId = submission?.metadata?.loan_id
-  if (!loanId) return NextResponse.json({ ok: true })
+  console.log('[docuseal/webhook] loan_id:', loanId, '| documents:', submission?.documents?.length ?? 0)
+
+  if (!loanId) {
+    console.warn('[docuseal/webhook] No loan_id in metadata — skipping')
+    return NextResponse.json({ ok: true })
+  }
 
   // Find the completed document download URL
   const documents: { name: string; url: string }[] = submission.documents ?? []
-  if (!documents.length) return NextResponse.json({ ok: true })
+  if (!documents.length) {
+    console.warn('[docuseal/webhook] No documents in payload')
+    return NextResponse.json({ ok: true })
+  }
 
   const doc = documents[0]
   const supabase = createServiceClient()
