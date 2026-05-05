@@ -30,6 +30,11 @@ function formatBrokerFee(pct: string): string {
   return `${bps} basis points (${num.toFixed(2)}%)`
 }
 
+function parseBrokerFee(formatted: string): string {
+  const m = formatted.match(/\((\d+\.?\d*)%\)/)
+  return m ? m[1] : ''
+}
+
 function fmtSize(bytes: number | null) {
   if (!bytes) return ''
   if (bytes < 1024) return `${bytes} B`
@@ -129,6 +134,10 @@ export default function LoanDetailPage() {
   const [agreementSending, setAgreementSending] = useState(false)
   const [agreementSent, setAgreementSent] = useState(false)
   const [agreementError, setAgreementError] = useState<string | null>(null)
+  const [resending, setResending] = useState(false)
+  const [resendConfirm, setResendConfirm] = useState(false)
+  const [resendFee, setResendFee] = useState('')
+  const [resendError, setResendError] = useState<string | null>(null)
 
   // Tasks
   const [tasks, setTasks] = useState<Task[]>([])
@@ -384,6 +393,33 @@ export default function LoanDetailPage() {
       setAgreementError('Network error — please try again')
     } finally {
       setAgreementSending(false)
+    }
+  }
+
+  async function resendBrokerAgreement() {
+    if (!resendFee) return
+    setResending(true)
+    setResendError(null)
+    try {
+      const res = await fetch('/api/docuseal/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loan_id: id, broker_fee: formatBrokerFee(resendFee) }),
+      })
+      const text = await res.text()
+      let json: { error?: string } = {}
+      try { json = JSON.parse(text) } catch { /* non-JSON */ }
+      if (!res.ok) {
+        setResendError(json.error ?? 'Resend failed — please try again')
+      } else {
+        setResendConfirm(false)
+        setResendFee('')
+        await fetchLoan()
+      }
+    } catch {
+      setResendError('Network error — please try again')
+    } finally {
+      setResending(false)
     }
   }
 
@@ -765,14 +801,62 @@ export default function LoanDetailPage() {
           Upload broker agreements and other deal docs. Borrower-uploaded docs also appear here.
         </p>
 
-        {/* Send Broker Agreement */}
-        <div className="mb-4">
+        {/* Send / Resend Broker Agreement */}
+        <div className="mb-4 flex gap-2 items-center">
           <button
             onClick={() => { setShowAgreementModal(true); setAgreementError(null) }}
             className="bg-[#003087] text-white px-4 py-2 rounded text-sm font-medium hover:bg-[#002070]"
           >
             Send Broker Agreement
           </button>
+          {loan?.broker_fee_sent && (
+            !resendConfirm ? (
+              <button
+                onClick={() => {
+                  setResendFee(parseBrokerFee(loan.broker_fee_sent))
+                  setResendError(null)
+                  setResendConfirm(true)
+                }}
+                className="border border-[#003087] text-[#003087] px-4 py-2 rounded text-sm font-medium hover:bg-blue-50"
+              >
+                Resend Agreement
+              </button>
+            ) : (
+              <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 flex flex-col gap-2 w-72">
+                <p className="text-xs font-medium text-gray-600">Confirm broker fee to resend</p>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={resendFee}
+                  onChange={(e) => setResendFee(e.target.value)}
+                  placeholder="e.g. 1.5"
+                  className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+                />
+                {resendFee && !isNaN(parseFloat(resendFee)) && (
+                  <p className="text-xs text-gray-500">
+                    Will read: <span className="font-medium text-gray-700">{formatBrokerFee(resendFee)}</span>
+                  </p>
+                )}
+                {resendError && <p className="text-xs text-red-600">{resendError}</p>}
+                <div className="flex gap-2">
+                  <button
+                    onClick={resendBrokerAgreement}
+                    disabled={resending || !resendFee}
+                    className="bg-[#003087] text-white px-3 py-1.5 rounded text-sm hover:bg-[#002070] disabled:opacity-50"
+                  >
+                    {resending ? 'Sending...' : 'Resend'}
+                  </button>
+                  <button
+                    onClick={() => { setResendConfirm(false); setResendError(null) }}
+                    className="border border-gray-300 text-gray-600 px-3 py-1.5 rounded text-sm hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )
+          )}
         </div>
 
         <div className="flex gap-2 items-center mb-4">

@@ -184,6 +184,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: msg }, { status: 500 })
     }
 
+    // Save broker fee and sent timestamp on the loan so Resend can use them
+    if (resolvedLoanId) {
+      await supabase.from('loans').update({
+        broker_fee_sent: broker_fee,
+        broker_agreement_sent_at: new Date().toISOString(),
+      }).eq('id', resolvedLoanId)
+    }
+
     const arr = Array.isArray(dsData) ? dsData : [dsData]
     return NextResponse.json({
       ok: true,
