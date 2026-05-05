@@ -18,15 +18,19 @@ export async function POST(req: NextRequest) {
   if (!documents.length) return NextResponse.json({ ok: true })
 
   const doc = documents[0]
+  const supabase = createServiceClient()
 
-  // Build filename from borrower name (First Party submitter)
+  // Build filename from borrower last name + property street address
   const submitters: { role: string; name: string }[] = submission.submitters ?? []
   const borrower = submitters.find((s) => s.role === 'First Party')
-  const safeName = (borrower?.name ?? 'borrower')
-    .toLowerCase()
-    .replace(/\s+/g, '_')
-    .replace(/[^a-z0-9_]/g, '')
-  const fileName = `broker_agreement_${safeName}.pdf`
+  const nameParts = (borrower?.name ?? '').trim().split(/\s+/)
+  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0] ?? 'borrower'
+
+  const { data: loanRow } = await supabase.from('loans').select('address_street').eq('id', loanId).single()
+  const street = loanRow?.address_street ?? ''
+
+  const safe = (s: string) => s.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+  const fileName = `broker_agreement_${safe(lastName)}_${safe(street)}.pdf`
 
   // Download the completed PDF from Docuseal
   const pdfRes = await fetch(doc.url, {
@@ -39,8 +43,6 @@ export async function POST(req: NextRequest) {
 
   const pdfBuffer = await pdfRes.arrayBuffer()
   const storagePath = `loans/${loanId}/${fileName}`
-
-  const supabase = createServiceClient()
 
   const { error: uploadError } = await supabase.storage
     .from('loan-documents')
