@@ -11,31 +11,36 @@ const SAK_NAME = 'Scott Katz'
 export async function POST(req: NextRequest) {
   const body = await req.json()
   const {
+    // Mode A: existing loan
     loan_id,
+    // Mode B: existing contact, no loan yet
+    contact_id,
+    property_address: inputAddress,
+    // Mode C: brand new — create contact + loan
+    first_name,
+    last_name,
+    email: inputEmail,
+    // All modes
     broker_fee,
-    // Manual overrides (ad-hoc mode, no loan_id)
-    borrower_name: manualBorrowerName,
-    borrower_email: manualBorrowerEmail,
     borrower_2_name,
     borrower_2_email,
-    property_address: manualAddress,
   } = body
 
   if (!broker_fee) return NextResponse.json({ error: 'broker_fee required' }, { status: 400 })
 
-  let borrowerName = manualBorrowerName
-  let borrowerEmail = manualBorrowerEmail
-  let propertyAddress = manualAddress
+  const supabase = createServiceClient()
+  let borrowerName: string
+  let borrowerEmail: string
+  let propertyAddress: string
+  let resolvedLoanId: string | null = loan_id ?? null
 
-  // Pull from DB if loan_id provided
+  // ── Mode A: pull everything from existing loan ─────────────────────
   if (loan_id) {
-    const supabase = createServiceClient()
     const { data: loan } = await supabase
       .from('loans')
       .select('contact_id, address_street, address_city, address_state, address_zip')
       .eq('id', loan_id)
       .single()
-
     if (!loan) return NextResponse.json({ error: 'Loan not found' }, { status: 404 })
 
     const { data: contact } = await supabase
@@ -43,7 +48,6 @@ export async function POST(req: NextRequest) {
       .select('first_name, last_name, email')
       .eq('id', loan.contact_id)
       .single()
-
     if (!contact) return NextResponse.json({ error: 'Contact not found' }, { status: 404 })
 
     borrowerName = `${contact.first_name} ${contact.last_name}`
@@ -54,11 +58,54 @@ export async function POST(req: NextRequest) {
       loan.address_state,
       loan.address_zip,
     ].filter(Boolean).join(', ')
-  }
 
-  if (!borrowerName || !borrowerEmail || !propertyAddress) {
+  // ── Mode B: existing contact, create loan ──────────────────────────
+  } else if (contact_id) {
+    if (!inputAddress) return NextResponse.json({ error: 'property_address required' }, { status: 400 })
+
+    const { data: contact } = await supabase
+      .from('contacts')
+      .select('first_name, last_name, email')
+      .eq('id', contact_id)
+      .single()
+    if (!contact) return NextResponse.json({ error: 'Contact not found' }, { status: 404 })
+
+    borrowerName = `${contact.first_name} ${contact.last_name}`
+    borrowerEmail = contact.email
+    propertyAddress = inputAddress
+
+    const { data: newLoan, error: loanErr } = await supabase
+      .from('loans')
+      .insert({ contact_id, address_street: inputAddress, stage: 'lead' })
+      .select('id')
+      .single()
+    if (loanErr) return NextResponse.json({ error: loanErr.message }, { status: 500 })
+    resolvedLoanId = newLoan.id
+
+  // ── Mode C: new contact + new loan ────────────────────────────────
+  } else if (first_name && last_name && inputEmail && inputAddress) {
+    const { data: newContact, error: contactErr } = await supabase
+      .from('contacts')
+      .insert({ first_name, last_name, email: inputEmail, source: 'manual' })
+      .select('id')
+      .single()
+    if (contactErr) return NextResponse.json({ error: contactErr.message }, { status: 500 })
+
+    const { data: newLoan, error: loanErr } = await supabase
+      .from('loans')
+      .insert({ contact_id: newContact.id, address_street: inputAddress, stage: 'lead' })
+      .select('id')
+      .single()
+    if (loanErr) return NextResponse.json({ error: loanErr.message }, { status: 500 })
+
+    borrowerName = `${first_name} ${last_name}`
+    borrowerEmail = inputEmail
+    propertyAddress = inputAddress
+    resolvedLoanId = newLoan.id
+
+  } else {
     return NextResponse.json(
-      { error: 'borrower_name, borrower_email, and property_address are required' },
+      { error: 'Provide loan_id, contact_id, or first_name/last_name/email/property_address' },
       { status: 400 }
     )
   }
@@ -74,52 +121,25 @@ export async function POST(req: NextRequest) {
 
   const submitters = twoBorrowers
     ? [
-        {
-          role: 'First Party',
-          name: borrowerName,
-          email: borrowerEmail,
-          fields: prefilledFields,
-        },
-        {
-          role: 'Second Party',
-          name: borrower_2_name,
-          email: borrower_2_email,
-          fields: [{ name: 'borrower_2_name', default_value: borrower_2_name, readonly: true }],
-        },
-        {
-          role: 'Third Party',
-          name: SAK_NAME,
-          email: SAK_EMAIL,
-        },
+        { role: 'First Party',  name: borrowerName,      email: borrowerEmail,      fields: prefilledFields },
+        { role: 'Second Party', name: borrower_2_name,   email: borrower_2_email,
+          fields: [{ name: 'borrower_2_name', default_value: borrower_2_name, readonly: true }] },
+        { role: 'Third Party',  name: SAK_NAME,          email: SAK_EMAIL },
       ]
     : [
-        {
-          role: 'First Party',
-          name: borrowerName,
-          email: borrowerEmail,
-          fields: prefilledFields,
-        },
-        {
-          role: 'Second Party',
-          name: SAK_NAME,
-          email: SAK_EMAIL,
-        },
+        { role: 'First Party',  name: borrowerName, email: borrowerEmail, fields: prefilledFields },
+        { role: 'Second Party', name: SAK_NAME,     email: SAK_EMAIL },
       ]
-
-  const payload = {
-    template_id: Number(templateId),
-    send_email: true,
-    submitters,
-    metadata: loan_id ? { loan_id } : {},
-  }
 
   const res = await fetch(`${DOCUSEAL_API_URL}/submissions`, {
     method: 'POST',
-    headers: {
-      'X-Auth-Token': DOCUSEAL_API_KEY,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
+    headers: { 'X-Auth-Token': DOCUSEAL_API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      template_id: Number(templateId),
+      send_email: true,
+      submitters,
+      metadata: resolvedLoanId ? { loan_id: resolvedLoanId } : {},
+    }),
   })
 
   const data = await res.json()
@@ -128,5 +148,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: data.error ?? 'Docuseal request failed' }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true, submission_id: data[0]?.submission_id ?? data.id })
+  return NextResponse.json({
+    ok: true,
+    loan_id: resolvedLoanId,
+    submission_id: data[0]?.submission_id ?? data.id,
+  })
 }

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import StreetView from '@/components/StreetView'
+import BrokerAgreementModal from '@/components/dashboard/BrokerAgreementModal'
 
 type Contact = {
   id: string
@@ -101,6 +102,7 @@ export default function ContactDetailPage() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [inviting, setInviting] = useState(false)
+  const [showAgreementModal, setShowAgreementModal] = useState(false)
   const [inviteMsg, setInviteMsg] = useState('')
   const [magicLink, setMagicLink] = useState<string | null>(null)
   const [editData, setEditData] = useState<Partial<Contact>>({})
@@ -258,6 +260,12 @@ export default function ContactDetailPage() {
           )}
         </div>
         <div className="flex gap-2 items-center">
+          <button
+            onClick={() => setShowAgreementModal(true)}
+            className="bg-[#003087] text-white px-4 py-2 rounded text-sm font-medium hover:bg-[#002070]"
+          >
+            Send Agreement
+          </button>
           <button onClick={inviteBorrower} disabled={inviting}
             className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
             {inviting ? 'Sending...' : 'Invite Borrower'}
@@ -764,6 +772,15 @@ export default function ContactDetailPage() {
           </div>
         )}
       </div>
+
+      {showAgreementModal && contact && (
+        <BrokerAgreementModal
+          onClose={() => setShowAgreementModal(false)}
+          contactId={contact.id}
+          contactName={`${contact.first_name} ${contact.last_name}`}
+          contactEmail={contact.email}
+        />
+      )}
     </div>
   )
 }

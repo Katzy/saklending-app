@@ -2,8 +2,10 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import BrokerAgreementModal from '@/components/dashboard/BrokerAgreementModal'
 
 const NAV = [
   { href: '/dashboard',           label: 'Overview',  icon: '📊' },
@@ -22,6 +24,8 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
+  const [showAgreementModal, setShowAgreementModal] = useState(false)
+
   const handleSignOut = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -34,6 +38,7 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
   }
 
   return (
+    <>
     <aside className={`
       fixed top-0 left-0 h-full w-56 bg-[#003087] flex flex-col z-40
       transition-transform duration-200
@@ -79,6 +84,16 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
         })}
       </nav>
 
+      {/* Quick action */}
+      <div className="px-3 pb-3">
+        <button
+          onClick={() => setShowAgreementModal(true)}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium bg-white text-[#003087] hover:bg-blue-50 transition-colors"
+        >
+          <span>📄</span> Send Agreement
+        </button>
+      </div>
+
       {/* Public site link + sign out */}
       <div className="px-3 py-4 border-t border-blue-800 space-y-1">
         <Link
@@ -96,5 +111,13 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
         </button>
       </div>
     </aside>
+
+    {showAgreementModal && (
+      <BrokerAgreementModal
+        adhoc
+        onClose={() => setShowAgreementModal(false)}
+      />
+    )}
+  </>
   )
 }
