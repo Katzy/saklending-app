@@ -19,6 +19,15 @@ export async function POST(req: NextRequest) {
 
   const doc = documents[0]
 
+  // Build filename from borrower name (First Party submitter)
+  const submitters: { role: string; name: string }[] = submission.submitters ?? []
+  const borrower = submitters.find((s) => s.role === 'First Party')
+  const safeName = (borrower?.name ?? 'borrower')
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_]/g, '')
+  const fileName = `broker_agreement_${safeName}.pdf`
+
   // Download the completed PDF from Docuseal
   const pdfRes = await fetch(doc.url, {
     headers: { 'X-Auth-Token': process.env.DOCUSEAL_API_KEY! },
@@ -29,7 +38,6 @@ export async function POST(req: NextRequest) {
   }
 
   const pdfBuffer = await pdfRes.arrayBuffer()
-  const fileName = `broker_agreement_executed_${Date.now()}.pdf`
   const storagePath = `loans/${loanId}/${fileName}`
 
   const supabase = createServiceClient()
