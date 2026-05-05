@@ -351,32 +351,37 @@ export default function LoanDetailPage() {
   async function sendBrokerAgreement() {
     setAgreementSending(true)
     setAgreementError(null)
-    const res = await fetch('/api/docuseal/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        loan_id: id,
-        broker_fee: formatBrokerFee(agreementBrokerFee),
-        ...(agreementTwoBorrowers && {
-          borrower_2_name: agreementBorrower2Name,
-          borrower_2_email: agreementBorrower2Email,
+    try {
+      const res = await fetch('/api/docuseal/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          loan_id: id,
+          broker_fee: formatBrokerFee(agreementBrokerFee),
+          ...(agreementTwoBorrowers && {
+            borrower_2_name: agreementBorrower2Name,
+            borrower_2_email: agreementBorrower2Email,
+          }),
         }),
-      }),
-    })
-    const json = await res.json()
-    setAgreementSending(false)
-    if (!res.ok) {
-      setAgreementError(json.error ?? 'Failed to send agreement')
-    } else {
-      setAgreementSent(true)
-      setTimeout(() => {
-        setShowAgreementModal(false)
-        setAgreementSent(false)
-        setAgreementBrokerFee('')
-        setAgreementTwoBorrowers(false)
-        setAgreementBorrower2Name('')
-        setAgreementBorrower2Email('')
-      }, 2000)
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setAgreementError(json.error ?? 'Failed to send agreement')
+      } else {
+        setAgreementSent(true)
+        setTimeout(() => {
+          setShowAgreementModal(false)
+          setAgreementSent(false)
+          setAgreementBrokerFee('')
+          setAgreementTwoBorrowers(false)
+          setAgreementBorrower2Name('')
+          setAgreementBorrower2Email('')
+        }, 2000)
+      }
+    } catch (e) {
+      setAgreementError('Network error — please try again')
+    } finally {
+      setAgreementSending(false)
     }
   }
 

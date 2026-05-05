@@ -63,25 +63,27 @@ export default function BrokerAgreementModal({
       payload.borrower_2_email = borrower2Email
     }
 
-    const res = await fetch('/api/docuseal/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    const json = await res.json()
-    setSending(false)
-
-    if (!res.ok) {
-      setError(json.error ?? 'Failed to send agreement')
-      return
+    try {
+      const res = await fetch('/api/docuseal/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setError(json.error ?? 'Failed to send agreement')
+        return
+      }
+      setSent(true)
+      setTimeout(() => {
+        onClose()
+        if (json.loan_id) router.push(`/dashboard/loans/${json.loan_id}`)
+      }, 1500)
+    } catch {
+      setError('Network error — please try again')
+    } finally {
+      setSending(false)
     }
-
-    setSent(true)
-    setTimeout(() => {
-      onClose()
-      // Navigate to the new loan if one was created
-      if (json.loan_id) router.push(`/dashboard/loans/${json.loan_id}`)
-    }, 1500)
   }
 
   const canSubmit =
