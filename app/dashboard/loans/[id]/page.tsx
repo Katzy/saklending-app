@@ -113,6 +113,16 @@ export default function LoanDetailPage() {
   const [adminDocType, setAdminDocType] = useState('broker_agreement')
   const adminDocFileRef = useRef<HTMLInputElement>(null)
 
+  // Broker agreement modal
+  const [showAgreementModal, setShowAgreementModal] = useState(false)
+  const [agreementBrokerFee, setAgreementBrokerFee] = useState('')
+  const [agreementTwoBorrowers, setAgreementTwoBorrowers] = useState(false)
+  const [agreementBorrower2Name, setAgreementBorrower2Name] = useState('')
+  const [agreementBorrower2Email, setAgreementBorrower2Email] = useState('')
+  const [agreementSending, setAgreementSending] = useState(false)
+  const [agreementSent, setAgreementSent] = useState(false)
+  const [agreementError, setAgreementError] = useState<string | null>(null)
+
   // Tasks
   const [tasks, setTasks] = useState<Task[]>([])
   const [taskTitle, setTaskTitle] = useState('')
@@ -329,6 +339,38 @@ export default function LoanDetailPage() {
   async function deleteAdminDoc(docId: string) {
     await fetch(`/api/loans/${id}/documents?doc_id=${docId}`, { method: 'DELETE' })
     await fetchDocs()
+  }
+
+  async function sendBrokerAgreement() {
+    setAgreementSending(true)
+    setAgreementError(null)
+    const res = await fetch('/api/docuseal/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        loan_id: id,
+        broker_fee: agreementBrokerFee,
+        ...(agreementTwoBorrowers && {
+          borrower_2_name: agreementBorrower2Name,
+          borrower_2_email: agreementBorrower2Email,
+        }),
+      }),
+    })
+    const json = await res.json()
+    setAgreementSending(false)
+    if (!res.ok) {
+      setAgreementError(json.error ?? 'Failed to send agreement')
+    } else {
+      setAgreementSent(true)
+      setTimeout(() => {
+        setShowAgreementModal(false)
+        setAgreementSent(false)
+        setAgreementBrokerFee('')
+        setAgreementTwoBorrowers(false)
+        setAgreementBorrower2Name('')
+        setAgreementBorrower2Email('')
+      }, 2000)
+    }
   }
 
   function set(key: string, val: unknown) { setDraft((d) => ({ ...d, [key]: val })) }
@@ -708,6 +750,17 @@ export default function LoanDetailPage() {
         <p className="text-xs text-gray-500 mb-3">
           Upload broker agreements and other deal docs. Borrower-uploaded docs also appear here.
         </p>
+
+        {/* Send Broker Agreement */}
+        <div className="mb-4">
+          <button
+            onClick={() => { setShowAgreementModal(true); setAgreementError(null) }}
+            className="bg-[#003087] text-white px-4 py-2 rounded text-sm font-medium hover:bg-[#002070]"
+          >
+            Send Broker Agreement
+          </button>
+        </div>
+
         <div className="flex gap-2 items-center mb-4">
           <select
             value={adminDocType}
@@ -903,6 +956,88 @@ export default function LoanDetailPage() {
           </button>
         )}
       </Section>
+
+      {/* Broker Agreement modal */}
+      {showAgreementModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-[480px]">
+            <h2 className="text-lg font-bold text-gray-900 mb-1">Send Broker Agreement</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Pre-filled with borrower name and property address from this loan.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Broker Fee</label>
+                <input
+                  value={agreementBrokerFee}
+                  onChange={(e) => setAgreementBrokerFee(e.target.value)}
+                  placeholder="e.g. 150 basis points (1.50%)"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreementTwoBorrowers}
+                  onChange={(e) => setAgreementTwoBorrowers(e.target.checked)}
+                  className="rounded"
+                />
+                Add a co-borrower
+              </label>
+
+              {agreementTwoBorrowers && (
+                <div className="space-y-3 pl-1">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Co-Borrower Name</label>
+                    <input
+                      value={agreementBorrower2Name}
+                      onChange={(e) => setAgreementBorrower2Name(e.target.value)}
+                      placeholder="Full name"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Co-Borrower Email</label>
+                    <input
+                      type="email"
+                      value={agreementBorrower2Email}
+                      onChange={(e) => setAgreementBorrower2Email(e.target.value)}
+                      placeholder="email@example.com"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {agreementError && (
+                <p className="text-sm text-red-600">{agreementError}</p>
+              )}
+
+              {agreementSent && (
+                <p className="text-sm text-green-600 font-medium">Agreement sent successfully!</p>
+              )}
+            </div>
+
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={() => { setShowAgreementModal(false); setAgreementError(null) }}
+                className="border border-gray-300 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={sendBrokerAgreement}
+                disabled={agreementSending || !agreementBrokerFee || (agreementTwoBorrowers && (!agreementBorrower2Name || !agreementBorrower2Email))}
+                className="bg-[#003087] text-white px-4 py-2 rounded text-sm font-medium hover:bg-[#002070] disabled:opacity-50"
+              >
+                {agreementSending ? 'Sending...' : 'Send for Signature'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Dead modal */}
       {deadModal && (
