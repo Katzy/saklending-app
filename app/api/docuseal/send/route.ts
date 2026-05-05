@@ -163,11 +163,16 @@ export async function POST(req: NextRequest) {
           { role: 'Second Party', name: SAK_NAME,     email: SAK_EMAIL,     message: sakMessage,     order: 1 },
         ]
 
+    const safe = (s: string) => s.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+    const lastNameRaw = borrowerName.trim().split(/\s+/).slice(-1)[0] ?? borrowerName
+    const submissionName = `broker_agreement_${safe(lastNameRaw)}_${safe(propertyAddress)}`
+
     const dsRes = await fetch(`${DOCUSEAL_API_URL}/submissions`, {
       method: 'POST',
       headers: { 'X-Auth-Token': DOCUSEAL_API_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         template_id: Number(templateId),
+        name: submissionName,
         send_email: true,
         submitters,
         metadata: resolvedLoanId ? { loan_id: resolvedLoanId } : {},
