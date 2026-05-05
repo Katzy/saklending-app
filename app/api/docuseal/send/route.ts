@@ -128,14 +128,19 @@ export async function POST(req: NextRequest) {
 
     const SUBJECT = 'SAK Lending Broker Agreement - Signature needed'
 
-    const borrowerMessage = {
+    const SIG = 'Scott Katz\nSAK Lending'
+
+    const borrowerBody = `Hi ${borrowerFirstName},\n\nThe link below will take you to my broker agreement. It's non-exclusive and does not obligate you to close a loan with me. It states my fees and highlights that I will only get paid if you fund a loan from a lender that I have facilitated for you.\n\n{{submitter.link}}\n\n${SIG}`
+    const borrowerMessage = { subject: SUBJECT, body: borrowerBody }
+
+    const coborrowerMessage = (firstName: string) => ({
       subject: SUBJECT,
-      body: `Hi ${borrowerFirstName},\n\nThe link below will take you to my broker agreement. It's non-exclusive and does not obligate you to close a loan with me. It states my fees and highlights that I will only get paid if you fund a loan from a lender that I have facilitated for you.\n\nSAK Lending`,
-    }
+      body: `Hi ${firstName},\n\nThe link below will take you to my broker agreement. It's non-exclusive and does not obligate you to close a loan with me. It states my fees and highlights that I will only get paid if you fund a loan from a lender that I have facilitated for you.\n\n{{submitter.link}}\n\n${SIG}`,
+    })
 
     const sakMessage = {
       subject: SUBJECT,
-      body: `${borrowerName} has been sent a broker agreement for ${propertyAddress}. Please review and countersign below.\n\nSAK Lending`,
+      body: `${borrowerName} has been sent a broker agreement for ${propertyAddress}. Please review and countersign below.\n\n{{submitter.link}}\n\n${SIG}`,
     }
 
     const prefilledFields = [
@@ -146,14 +151,14 @@ export async function POST(req: NextRequest) {
 
     const submitters = twoBorrowers
       ? [
-          { role: 'First Party',  name: borrowerName,    email: borrowerEmail,    fields: prefilledFields, message: borrowerMessage },
+          { role: 'First Party',  name: borrowerName,    email: borrowerEmail,    fields: prefilledFields, message: borrowerMessage, order: 1 },
           { role: 'Second Party', name: borrower_2_name, email: borrower_2_email,
-            fields: [{ name: 'borrower_2_name', default_value: borrower_2_name, readonly: true }], message: { subject: SUBJECT, body: `Hi ${borrower_2_name.split(' ')[0]},\n\nThe link below will take you to my broker agreement. It's non-exclusive and does not obligate you to close a loan with me. It states my fees and highlights that I will only get paid if you fund a loan from a lender that I have facilitated for you.\n\nSAK Lending` } },
-          { role: 'Third Party',  name: SAK_NAME, email: SAK_EMAIL, message: sakMessage },
+            fields: [{ name: 'borrower_2_name', default_value: borrower_2_name, readonly: true }], message: coborrowerMessage(borrower_2_name.split(' ')[0]), order: 1 },
+          { role: 'Third Party',  name: SAK_NAME, email: SAK_EMAIL, message: sakMessage, order: 1 },
         ]
       : [
-          { role: 'First Party',  name: borrowerName, email: borrowerEmail, fields: prefilledFields, message: borrowerMessage },
-          { role: 'Second Party', name: SAK_NAME,     email: SAK_EMAIL,     message: sakMessage },
+          { role: 'First Party',  name: borrowerName, email: borrowerEmail, fields: prefilledFields, message: borrowerMessage, order: 1 },
+          { role: 'Second Party', name: SAK_NAME,     email: SAK_EMAIL,     message: sakMessage,     order: 1 },
         ]
 
     const dsRes = await fetch(`${DOCUSEAL_API_URL}/submissions`, {
