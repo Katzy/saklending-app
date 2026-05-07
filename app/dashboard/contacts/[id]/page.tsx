@@ -7,6 +7,8 @@ import { toast } from 'sonner'
 import StreetView from '@/components/StreetView'
 import BrokerAgreementModal from '@/components/dashboard/BrokerAgreementModal'
 
+type ContactNote = { id: string; created_at: string; content: string }
+
 type Contact = {
   id: string
   created_at: string
@@ -107,6 +109,11 @@ export default function ContactDetailPage() {
   const [magicLink, setMagicLink] = useState<string | null>(null)
   const [editData, setEditData] = useState<Partial<Contact>>({})
 
+  // Contact notes state
+  const [contactNotes, setContactNotes] = useState<ContactNote[]>([])
+  const [newNote, setNewNote] = useState('')
+  const [addingNote, setAddingNote] = useState(false)
+
   // Property add/edit state
   const [showAddProp, setShowAddProp] = useState(false)
   const [propDraft, setPropDraft] = useState(BLANK_PROP)
@@ -150,11 +157,34 @@ export default function ContactDetailPage() {
     if (res.ok) setProperties(await res.json())
   }, [id])
 
+  const fetchNotes = useCallback(async () => {
+    const res = await fetch(`/api/contacts/${id}/notes`)
+    if (res.ok) setContactNotes(await res.json())
+  }, [id])
+
   useEffect(() => {
     fetchContact()
     fetchLoans()
     fetchProperties()
-  }, [fetchContact, fetchLoans, fetchProperties])
+    fetchNotes()
+  }, [fetchContact, fetchLoans, fetchProperties, fetchNotes])
+
+  async function submitNote(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newNote.trim()) return
+    setAddingNote(true)
+    const res = await fetch(`/api/contacts/${id}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: newNote.trim() }),
+    })
+    if (res.ok) {
+      const note = await res.json()
+      setContactNotes((prev) => [note, ...prev])
+      setNewNote('')
+    }
+    setAddingNote(false)
+  }
 
   async function saveContact() {
     setSaving(true)
@@ -388,15 +418,34 @@ export default function ContactDetailPage() {
       {/* Notes */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-4">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Notes</h2>
-        {editing ? (
-          <textarea rows={4} value={editData.notes ?? ''}
-            onChange={(e) => setEditData({ ...editData, notes: e.target.value || null })}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
-            placeholder="Internal notes..." />
+        <form onSubmit={submitNote} className="flex gap-2 mb-4">
+          <input
+            value={newNote}
+            onChange={(e) => setNewNote(e.target.value)}
+            placeholder="Add a note..."
+            className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+          />
+          <button
+            type="submit"
+            disabled={addingNote || !newNote.trim()}
+            className="bg-[#003087] text-white px-4 py-2 rounded text-sm hover:bg-[#002070] disabled:opacity-50"
+          >
+            Add
+          </button>
+        </form>
+        {contactNotes.length === 0 ? (
+          <p className="text-sm text-gray-400 italic">No notes yet.</p>
         ) : (
-          <p className="text-sm text-gray-700 whitespace-pre-wrap">
-            {contact.notes || <span className="text-gray-400 italic">None</span>}
-          </p>
+          <div className="space-y-3">
+            {contactNotes.map((note) => (
+              <div key={note.id} className="border-l-2 border-gray-200 pl-3">
+                <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.content}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {new Date(note.created_at).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 

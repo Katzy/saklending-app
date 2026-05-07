@@ -123,6 +123,7 @@ export default function LoanDetailPage() {
   const [docs, setDocs] = useState<AdminDoc[]>([])
   const [docUploading, setDocUploading] = useState(false)
   const [adminDocType, setAdminDocType] = useState('broker_agreement')
+  const [otherAdminDocName, setOtherAdminDocName] = useState('')
   const adminDocFileRef = useRef<HTMLInputElement>(null)
 
   // Broker agreement modal
@@ -343,12 +344,16 @@ export default function LoanDetailPage() {
     const file = e.target.files?.[0]
     if (!file) return
     setDocUploading(true)
+    const resolvedDocType = adminDocType === 'other' && otherAdminDocName.trim()
+      ? otherAdminDocName.trim()
+      : adminDocType
     const fd = new FormData()
     fd.append('file', file)
-    fd.append('doc_type', adminDocType)
+    fd.append('doc_type', resolvedDocType)
     await fetch(`/api/loans/${id}/documents`, { method: 'POST', body: fd })
     await fetchDocs()
     setDocUploading(false)
+    setOtherAdminDocName('')
     if (adminDocFileRef.current) adminDocFileRef.current.value = ''
   }
 
@@ -859,14 +864,22 @@ export default function LoanDetailPage() {
           )}
         </div>
 
-        <div className="flex gap-2 items-center mb-4">
+        <div className="flex gap-2 items-center mb-4 flex-wrap">
           <select
             value={adminDocType}
-            onChange={(e) => setAdminDocType(e.target.value)}
+            onChange={(e) => { setAdminDocType(e.target.value); setOtherAdminDocName('') }}
             className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
           >
             {ADMIN_DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
+          {adminDocType === 'other' && (
+            <input
+              value={otherAdminDocName}
+              onChange={(e) => setOtherAdminDocName(e.target.value)}
+              placeholder="Describe document..."
+              className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+            />
+          )}
           <input ref={adminDocFileRef} type="file" onChange={uploadAdminDoc} className="hidden" />
           <button
             onClick={() => adminDocFileRef.current?.click()}
