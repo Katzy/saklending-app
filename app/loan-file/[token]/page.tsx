@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
+import StreetView from '@/components/StreetView'
 
 type Contact = {
   first_name: string; last_name: string; email: string; phone: string | null
@@ -12,7 +13,7 @@ type Document = { id: string; doc_type: string; file_name: string; file_size: nu
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Loan = Record<string, any>
 
-type Package = { loan: Loan; contact: Contact | null; documents: Document[] }
+type Package = { loan: Loan; contact: Contact | null; documents: Document[]; property_image_url: string | null }
 
 const PURPOSE_LABEL: Record<string, string> = {
   purchase: 'Purchase',
@@ -164,7 +165,7 @@ export default function BankPortalPage() {
   }
 
   if (!pkg) return null
-  const { loan, contact, documents } = pkg
+  const { loan, contact, documents, property_image_url } = pkg
   const noi = calcNOI(loan)
   const netWorth = calcNetWorth(loan)
 
@@ -221,6 +222,17 @@ export default function BankPortalPage() {
             </div>
           )}
         </div>
+
+        {/* ── Property Image ── */}
+        {(property_image_url || loan.address_street) && (
+          <div className="rounded-lg overflow-hidden border border-gray-200">
+            {property_image_url ? (
+              <Image src={property_image_url} alt="Property" width={900} height={400} className="w-full object-cover max-h-72" unoptimized />
+            ) : (
+              <StreetView street={loan.address_street} city={loan.address_city} state={loan.address_state} zip={loan.address_zip} width={900} height={400} className="w-full object-cover max-h-72" />
+            )}
+          </div>
+        )}
 
         {/* ── Loan Snapshot ── */}
         <div className="bg-[#003087] rounded-lg p-5 text-white">

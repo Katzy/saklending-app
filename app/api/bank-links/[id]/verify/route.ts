@@ -54,5 +54,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     })
   )
 
-  return NextResponse.json({ loan, contact, documents: docs })
+  // Generate signed URL for property image if present
+  let property_image_url: string | null = null
+  if (loan.property_image_path) {
+    const { data: imgSigned } = await supabase.storage
+      .from('loan-documents')
+      .createSignedUrl(loan.property_image_path, 60 * 60 * 4)
+    property_image_url = imgSigned?.signedUrl ?? null
+  }
+
+  return NextResponse.json({ loan, contact, documents: docs, property_image_url })
 }

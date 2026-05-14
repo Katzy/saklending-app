@@ -11,6 +11,8 @@ type LoanData = Record<string, any>
 type Note = { id: string; created_at: string; content: string }
 type Task = { id: string; title: string; notes: string | null; due_date: string | null; completed: boolean; created_at: string }
 type AdminDoc = { id: string; doc_type: string; file_name: string; file_size: number | null; uploaded_by_label: string; created_at: string }
+type LenderContact = { id: string; lender_id: string; name: string | null; email: string | null; phone: string | null; title: string | null }
+type LenderOption = { id: string; company: string | null; contact_name: string | null; email: string | null; lender_contacts: LenderContact[] }
 
 const ADMIN_DOC_TYPES = [
   { value: 'broker_agreement', label: 'Broker Agreement' },
@@ -22,6 +24,14 @@ const ADMIN_DOC_TYPES = [
   { value: 'environmental', label: 'Environmental Report' },
   { value: 'other', label: 'Other' },
 ]
+
+function generateLinkPassword(): string {
+  const adj = ['oak','sky','bay','elm','fox','ivy','clay','dune','fern','gold','jade','lake','moss','pine','reef','sage','tide','vale','wolf','zinc']
+  const noun = ['bank','bridge','cove','creek','dune','field','grove','hill','inlet','knoll','ledge','marsh','peak','point','ridge','river','rock','shore','stone','trail']
+  const num = Math.floor(10 + Math.random() * 90)
+  const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)]
+  return `${pick(adj)}-${pick(noun)}-${num}`
+}
 
 function formatBrokerFee(pct: string): string {
   const num = parseFloat(pct)
@@ -118,6 +128,13 @@ export default function LoanDetailPage() {
   const [newLinkUrl, setNewLinkUrl] = useState<string | null>(null)
   const [emailSent, setEmailSent] = useState(false)
   const [copied, setCopied] = useState(false)
+  // Lender autocomplete
+  const [lenderOptions, setLenderOptions] = useState<LenderOption[]>([])
+  const [lenderSuggestions, setLenderSuggestions] = useState<LenderOption[]>([])
+  const [selectedLender, setSelectedLender] = useState<LenderOption | null>(null)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const lenderInputRef = useRef<HTMLInputElement>(null)
+  const lenderOptionsRef = useRef<LenderOption[]>([])
 
   // Documents
   const [docs, setDocs] = useState<AdminDoc[]>([])
@@ -170,6 +187,15 @@ export default function LoanDetailPage() {
     if (res.ok) setBankLinks(await res.json())
   }, [id])
 
+  const fetchLenders = useCallback(async () => {
+    const res = await fetch('/api/lenders')
+    if (res.ok) {
+      const data = await res.json()
+      lenderOptionsRef.current = data
+      setLenderOptions(data)
+    }
+  }, [])
+
   const fetchDocs = useCallback(async () => {
     const res = await fetch(`/api/loans/${id}/documents`)
     if (res.ok) setDocs(await res.json())
@@ -180,7 +206,7 @@ export default function LoanDetailPage() {
     if (res.ok) setTasks(await res.json())
   }, [id])
 
-  useEffect(() => { fetchLoan(); fetchNotes(); fetchBankLinks(); fetchDocs(); fetchTasks() }, [fetchLoan, fetchNotes, fetchBankLinks, fetchDocs, fetchTasks])
+  useEffect(() => { fetchLoan(); fetchNotes(); fetchBankLinks(); fetchDocs(); fetchTasks(); fetchLenders() }, [fetchLoan, fetchNotes, fetchBankLinks, fetchDocs, fetchTasks, fetchLenders])
 
   async function saveLoan() {
     setSaving(true)
@@ -267,7 +293,7 @@ export default function LoanDetailPage() {
       setNewLinkUrl(url)
       setEmailSent(!!data.email_sent)
       setLinkLabel(''); setLinkPassword(''); setLinkDays('30')
-      setLinkEmail(''); setLinkContactName('')
+      setLinkEmail(''); setLinkContactName(''); setSelectedLender(null)
       setShowLinkForm(false)
       await fetchBankLinks()
     }
@@ -1013,6 +1039,89 @@ export default function LoanDetailPage() {
         {showLinkForm ? (
           <div className="border border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
             <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2 relative">
+                <label className="block text-xs text-gray-500 mb-1">Lender / bank (optional)</label>
+                <input
+                  ref={lenderInputRef}
+                  value={linkLabel}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setLinkLabel(val)
+                    setSelectedLender(null)
+if (val.trim().length > 0) {
+                      const q = val.toLowerCase()
+                      setLenderSuggestions(lenderOptionsRef.current.filter(l => l.company?.toLowerCase().includes(q)))
+                      setShowSuggestions(true)
+                    } else {
+                      setLenderSuggestions([])
+                      setShowSuggestions(false)
+                    }
+                  }}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  placeholder="e.g. First National Bank"
+                  className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+                />
+                {showSuggestions && lenderSuggestions.length > 0 && (
+                  <ul className="absolute z-10 left-0 right-0 bg-white border border-gray-200 rounded shadow-md mt-0.5 max-h-48 overflow-y-auto text-sm">
+                    {lenderSuggestions.map(l => (
+                      <li
+                        key={l.id}
+                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                        onMouseDown={() => {
+                          setLinkLabel(l.company || '')
+                          setSelectedLender(l)
+                          setShowSuggestions(false)
+                          // Collect all contacts for this lender
+                          const contacts: { name: string | null; email: string | null }[] = []
+                          if (l.contact_name || l.email) contacts.push({ name: l.contact_name, email: l.email })
+                          l.lender_contacts.forEach(c => { if (c.name || c.email) contacts.push({ name: c.name, email: c.email }) })
+                          if (contacts.length === 1) {
+                            setLinkContactName(contacts[0].name || '')
+                            setLinkEmail(contacts[0].email || '')
+                          } else {
+                            // Reset so user picks from dropdown
+                            setLinkContactName('')
+                            setLinkEmail('')
+                          }
+                        }}
+                      >
+                        <span className="font-medium">{l.company}</span>
+                        {l.contact_name && <span className="text-gray-400 ml-2 text-xs">{l.contact_name}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {/* Contact picker — shown when lender selected and has multiple contacts */}
+              {selectedLender && (() => {
+                const contacts: { name: string | null; email: string | null }[] = []
+                if (selectedLender.contact_name || selectedLender.email) contacts.push({ name: selectedLender.contact_name, email: selectedLender.email })
+                selectedLender.lender_contacts.forEach(c => { if (c.name || c.email) contacts.push({ name: c.name, email: c.email }) })
+                if (contacts.length <= 1) return null
+                return (
+                  <div className="col-span-2">
+                    <label className="block text-xs text-gray-500 mb-1">Send to (choose contact)</label>
+                    <select
+                      value={`${linkContactName}||${linkEmail}`}
+                      onChange={(e) => {
+                        const [name, email] = e.target.value.split('||')
+                        setLinkContactName(name)
+                        setLinkEmail(email)
+                      }}
+                      className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+                    >
+                      <option value="||">— select a contact —</option>
+                      {contacts.map((c, i) => (
+                        <option key={i} value={`${c.name || ''}||${c.email || ''}`}>
+                          {[c.name, c.email].filter(Boolean).join(' — ')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )
+              })()}
+
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Contact name (optional)</label>
                 <input value={linkContactName} onChange={(e) => setLinkContactName(e.target.value)}
@@ -1020,12 +1129,6 @@ export default function LoanDetailPage() {
                   className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Lender / label (optional)</label>
-                <input value={linkLabel} onChange={(e) => setLinkLabel(e.target.value)}
-                  placeholder="e.g. First National Bank"
-                  className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
-              </div>
-              <div className="col-span-2">
                 <label className="block text-xs text-gray-500 mb-1">Send to email (optional — leave blank to just copy the link)</label>
                 <input type="email" value={linkEmail} onChange={(e) => setLinkEmail(e.target.value)}
                   placeholder="lender@bank.com"
@@ -1034,7 +1137,7 @@ export default function LoanDetailPage() {
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Password *</label>
                 <input type="text" value={linkPassword} onChange={(e) => setLinkPassword(e.target.value)}
-                  placeholder="Set a strong password"
+                  placeholder="Auto-generated — edit if needed"
                   className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
               </div>
               <div>
@@ -1054,14 +1157,14 @@ export default function LoanDetailPage() {
                 className="bg-[#003087] text-white px-4 py-1.5 rounded text-sm font-medium hover:bg-[#002070] disabled:opacity-50">
                 {creatingLink ? (linkEmail ? 'Sending...' : 'Generating...') : (linkEmail ? 'Generate & Send' : 'Generate Link')}
               </button>
-              <button onClick={() => setShowLinkForm(false)}
+              <button onClick={() => { setShowLinkForm(false); setSelectedLender(null); setLinkLabel(''); setLinkEmail(''); setLinkContactName('') }}
                 className="border border-gray-300 text-gray-700 px-4 py-1.5 rounded text-sm hover:bg-gray-50">
                 Cancel
               </button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setShowLinkForm(true)}
+          <button onClick={() => { setShowLinkForm(true); setLinkPassword(generateLinkPassword()) }}
             className="text-sm text-[#003087] font-medium hover:underline">
             + Generate New Link
           </button>
