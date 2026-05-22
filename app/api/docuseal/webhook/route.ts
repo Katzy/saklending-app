@@ -1,9 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
+import nodemailer from 'nodemailer'
 import { createServiceClient } from '@/lib/supabase/server'
+
+async function sendEmail(subject: string, text: string) {
+  if (!process.env.RESEND_API_KEY) return
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.resend.com',
+    port: 465,
+    secure: true,
+    auth: { user: 'resend', pass: process.env.RESEND_API_KEY },
+  })
+  await transporter.sendMail({
+    from: '"SAK Lending" <support@saklending.com>',
+    to: 'scott@saklending.com',
+    subject,
+    text,
+  })
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
   console.log('[docuseal/webhook] event_type:', body.event_type)
+
+  // Notify when a borrower opens their signing link
+  if (body.event_type === 'form.viewed') {
+    const submitter = body.data
+    const name = submitter?.name ?? 'Someone'
+    const email = submitter?.email ?? ''
+    const loanId = submitter?.metadata?.loan_id ?? submitter?.submission?.metadata?.loan_id ?? ''
+
+    const supabase = createServiceClient()
+    let addressLine = ''
+    if (loanId) {
+      const { data: loan } = await supabase.from('loans').select('address_street').eq('id', loanId).single()
+      if (loan?.address_street) addressLine = ` for ${loan.address_street}`
+    }
+
+    await sendEmail(
+      `Broker agreement opened — ${name}`,
+      `${name}${email ? ` (${email})` : ''} just opened the broker agreement${addressLine}.`,
+    )
+    return NextResponse.json({ ok: true })
+  }
 
   // Only act on fully completed submissions
   if (body.event_type !== 'submission.completed') {

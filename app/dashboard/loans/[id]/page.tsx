@@ -388,6 +388,13 @@ export default function LoanDetailPage() {
     await fetchDocs()
   }
 
+  async function viewDoc(docId: string) {
+    const res = await fetch(`/api/loans/${id}/documents/${docId}/url`)
+    if (!res.ok) return
+    const { url } = await res.json()
+    window.open(url, '_blank')
+  }
+
   async function sendBrokerAgreement() {
     setAgreementSending(true)
     setAgreementError(null)
@@ -929,12 +936,20 @@ export default function LoanDetailPage() {
                     {doc.file_size ? ` · ${fmtSize(doc.file_size)}` : ''}
                   </p>
                 </div>
-                <button
-                  onClick={() => deleteAdminDoc(doc.id)}
-                  className="text-xs text-red-500 hover:text-red-700 hover:underline ml-4 flex-shrink-0"
-                >
-                  Remove
-                </button>
+                <div className="flex gap-3 ml-4 flex-shrink-0">
+                  <button
+                    onClick={() => viewDoc(doc.id)}
+                    className="text-xs text-[#003087] hover:underline"
+                  >
+                    View
+                  </button>
+                  <button
+                    onClick={() => deleteAdminDoc(doc.id)}
+                    className="text-xs text-red-500 hover:text-red-700 hover:underline"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             ))}
           </div>
