@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
 import StreetView from '@/components/StreetView'
@@ -10,10 +10,26 @@ type Contact = {
   entity_name: string | null; sponsor_bio: string | null; credit_score_estimate: number | null
 }
 type Document = { id: string; doc_type: string; file_name: string; file_size: number | null; url: string | null }
+type MyUpload = { id: string; file_name: string; doc_label: string; file_size: number | null; created_at: string; url: string | null }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Loan = Record<string, any>
 
-type Package = { loan: Loan; contact: Contact | null; documents: Document[]; property_image_url: string | null }
+type Package = {
+  loan: Loan
+  contact: Contact | null
+  documents: Document[]
+  property_image_url: string | null
+  decision: 'interested' | 'pass' | null
+  my_uploads: MyUpload[]
+  bank_link_id: string
+}
+
+function fmtSize(bytes: number | null) {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 const PURPOSE_LABEL: Record<string, string> = {
   purchase: 'Purchase',
@@ -82,6 +98,11 @@ export default function BankPortalPage() {
   const [decisionSending, setDecisionSending] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [pkg, setPkg] = useState<Package | null>(null)
+  const [myUploads, setMyUploads] = useState<MyUpload[]>([])
+  const [uploadLabel, setUploadLabel] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [uploadMsg, setUploadMsg] = useState('')
+  const uploadFileRef = useRef<HTMLInputElement>(null)
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault()
@@ -98,6 +119,8 @@ export default function BankPortalPage() {
       return
     }
     setPkg(json)
+    setDecision(json.decision ?? null)
+    setMyUploads(json.my_uploads ?? [])
     setPhase('package')
   }
 
@@ -164,6 +187,31 @@ export default function BankPortalPage() {
     setDecisionSending(false)
   }
 
+  async function uploadDoc(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setUploadMsg('')
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('doc_label', uploadLabel.trim() || 'other')
+    const res = await fetch(`/api/bank-links/${token}/documents`, { method: 'POST', body: fd })
+    if (res.ok) {
+      const { doc } = await res.json()
+      // Re-fetch signed URL for the new doc so it's viewable immediately
+      const urlRes = await fetch(`/api/bank-links/${token}/documents/${doc.id}/url`)
+      const url = urlRes.ok ? (await urlRes.json()).url : null
+      setMyUploads((prev) => [{ ...doc, url }, ...prev])
+      setUploadLabel('')
+      setUploadMsg('Uploaded successfully.')
+    } else {
+      const json = await res.json()
+      setUploadMsg(json.error ?? 'Upload failed.')
+    }
+    setUploading(false)
+    if (uploadFileRef.current) uploadFileRef.current.value = ''
+  }
+
   if (!pkg) return null
   const { loan, contact, documents, property_image_url } = pkg
   const noi = calcNOI(loan)
@@ -192,6 +240,12 @@ export default function BankPortalPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-5">
+
+        {/* Portal guide */}
+        <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800">
+          <p className="font-semibold mb-1">How this portal works</p>
+          <p>Review the loan package below and let SAK Lending know if you'd like to move forward. Once you express interest, you'll be able to upload documents directly to this loan file — such as term sheets, condition lists, or loan commitments. SAK Lending will be notified of every upload.</p>
+        </div>
 
         {/* Decision bar */}
         <div className="bg-white rounded-lg border border-gray-200 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -353,8 +407,8 @@ export default function BankPortalPage() {
           )}
         </Section>
 
-        {/* Documents */}
-        <Section title="Documents">
+        {/* Borrower Documents */}
+        <Section title="Loan Package Documents">
           {documents.length === 0 ? (
             <p className="text-sm text-gray-400 italic">No documents uploaded yet.</p>
           ) : (
@@ -376,6 +430,60 @@ export default function BankPortalPage() {
             </div>
           )}
         </Section>
+
+        {/* Lender upload section — only shown after expressing interest */}
+        {decision === 'interested' && (
+          <Section title="Your Uploads">
+            <p className="text-sm text-gray-500 mb-4">
+              Upload documents for this loan — term sheets, condition letters, commitment letters, etc. SAK Lending will be notified immediately.
+            </p>
+            <div className="flex gap-2 items-center mb-4 flex-wrap">
+              <input
+                type="text"
+                value={uploadLabel}
+                onChange={(e) => setUploadLabel(e.target.value)}
+                placeholder="Document label (e.g. Term Sheet)"
+                className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087] w-56"
+              />
+              <input ref={uploadFileRef} type="file" onChange={uploadDoc} className="hidden" />
+              <button
+                onClick={() => uploadFileRef.current?.click()}
+                disabled={uploading}
+                className="bg-[#003087] text-white px-4 py-1.5 rounded text-sm font-medium hover:bg-[#002070] disabled:opacity-50"
+              >
+                {uploading ? 'Uploading...' : 'Choose File & Upload'}
+              </button>
+            </div>
+            {uploadMsg && (
+              <p className={`text-sm mb-3 ${uploadMsg.includes('failed') || uploadMsg.includes('error') ? 'text-red-600' : 'text-green-600'}`}>
+                {uploadMsg}
+              </p>
+            )}
+            {myUploads.length === 0 ? (
+              <p className="text-sm text-gray-400 italic">No uploads yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {myUploads.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-200">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{doc.file_name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {doc.doc_label.replace(/_/g, ' ')}
+                        {doc.file_size ? ` · ${fmtSize(doc.file_size)}` : ''}
+                      </p>
+                    </div>
+                    {doc.url && (
+                      <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                        className="text-xs font-medium text-[#003087] border border-[#003087] px-3 py-1.5 rounded hover:bg-[#003087] hover:text-white transition flex-shrink-0 ml-4">
+                        View
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+        )}
 
         <p className="text-xs text-gray-400 text-center pb-4">
           Confidential — prepared by SAK Lending · {new Date().toLocaleDateString()}

@@ -142,7 +142,7 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('bank_share_links')
-    .select('id, token, label, expires_at, revoked_at, created_at')
+    .select('id, token, label, expires_at, revoked_at, created_at, decision, is_selected')
     .eq('loan_id', loan_id)
     .order('created_at', { ascending: false })
 

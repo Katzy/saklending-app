@@ -25,5 +25,26 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     .eq('loan_id', params.id)
     .order('created_at', { ascending: false })
 
-  return NextResponse.json({ loan, documents: documents ?? [] })
+  // Fetch lender documents from the selected bank only
+  const { data: selectedLink } = await supabase
+    .from('bank_share_links')
+    .select('id, label')
+    .eq('loan_id', params.id)
+    .eq('is_selected', true)
+    .maybeSingle()
+
+  let lender_documents: { id: string; file_name: string; doc_label: string; file_size: number | null; created_at: string }[] = []
+  let selected_lender_label: string | null = null
+
+  if (selectedLink) {
+    selected_lender_label = selectedLink.label ?? null
+    const { data: lenderDocs } = await supabase
+      .from('lender_documents')
+      .select('id, file_name, doc_label, file_size, created_at')
+      .eq('bank_link_id', selectedLink.id)
+      .order('created_at', { ascending: false })
+    lender_documents = lenderDocs ?? []
+  }
+
+  return NextResponse.json({ loan, documents: documents ?? [], lender_documents, selected_lender_label })
 }

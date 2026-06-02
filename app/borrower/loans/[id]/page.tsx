@@ -28,6 +28,14 @@ type Doc = {
   created_at: string
 }
 
+type LenderDoc = {
+  id: string
+  file_name: string
+  doc_label: string
+  file_size: number | null
+  created_at: string
+}
+
 const STAGE_LABELS: Record<string, string> = {
   lead: 'In Review', qualified: 'Qualified', application: 'Application',
   underwriting: 'Underwriting', approved: 'Approved', funded: 'Funded',
@@ -69,6 +77,9 @@ export default function BorrowerLoanDetailPage() {
 
   const [loan, setLoan] = useState<Loan | null>(null)
   const [docs, setDocs] = useState<Doc[]>([])
+  const [lenderDocs, setLenderDocs] = useState<LenderDoc[]>([])
+  const [selectedLenderLabel, setSelectedLenderLabel] = useState<string | null>(null)
+  const [viewingLender, setViewingLender] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [docType, setDocType] = useState('other')
   const [otherDocName, setOtherDocName] = useState('')
@@ -85,6 +96,8 @@ export default function BorrowerLoanDetailPage() {
     const json = await res.json()
     setLoan(json.loan)
     setDocs(json.documents)
+    setLenderDocs(json.lender_documents ?? [])
+    setSelectedLenderLabel(json.selected_lender_label ?? null)
     setLoading(false)
   }, [id])
 
@@ -121,6 +134,16 @@ export default function BorrowerLoanDetailPage() {
     await fetch(`/api/borrower/loans/${id}/documents?doc_id=${docId}`, { method: 'DELETE' })
     setDocs((prev) => prev.filter((d) => d.id !== docId))
     setDeleting(null)
+  }
+
+  async function viewLenderDoc(docId: string) {
+    setViewingLender(docId)
+    const res = await fetch(`/api/borrower/loans/${id}/lender-documents/${docId}/url`)
+    if (res.ok) {
+      const { url } = await res.json()
+      window.open(url, '_blank', 'noopener,noreferrer')
+    }
+    setViewingLender(null)
   }
 
   async function viewDoc(docId: string) {
@@ -264,6 +287,8 @@ export default function BorrowerLoanDetailPage() {
           </div>
         )}
 
+        <h2 className="text-base font-semibold text-gray-900 mb-1 mt-2">My Uploads</h2>
+
         {/* Document list */}
         {docs.length === 0 ? (
           <p className="text-sm text-gray-400 italic">No documents uploaded yet.</p>
@@ -317,6 +342,38 @@ export default function BorrowerLoanDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Lender documents — only shown when a lender is selected */}
+      {lenderDocs.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 mt-5">
+          <h2 className="text-base font-semibold text-gray-900 mb-1">
+            Documents from {selectedLenderLabel ?? 'Your Lender'}
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Your lender has uploaded the following documents for you to review.
+          </p>
+          <div className="space-y-2">
+            {lenderDocs.map((doc) => (
+              <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900">{doc.doc_label.replace(/_/g, ' ')}</p>
+                  <p className="text-sm text-gray-600 truncate">{doc.file_name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {doc.file_size ? fmtSize(doc.file_size) + ' · ' : ''}{new Date(doc.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => viewLenderDoc(doc.id)}
+                  disabled={viewingLender === doc.id}
+                  className="text-xs text-[#003087] hover:underline disabled:opacity-50 flex-shrink-0"
+                >
+                  {viewingLender === doc.id ? '...' : 'View'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

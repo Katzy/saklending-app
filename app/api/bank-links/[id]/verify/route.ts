@@ -13,7 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // Find the link by token
   const { data: link, error: linkError } = await supabase
     .from('bank_share_links')
-    .select('id, loan_id, password_hash, expires_at, revoked_at')
+    .select('id, loan_id, password_hash, expires_at, revoked_at, decision')
     .eq('token', params.id)
     .single()
 
@@ -63,5 +63,29 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     property_image_url = imgSigned?.signedUrl ?? null
   }
 
-  return NextResponse.json({ loan, contact, documents: docs, property_image_url })
+  // Fetch this lender's own uploads
+  const { data: lenderDocs } = await supabase
+    .from('lender_documents')
+    .select('id, file_name, doc_label, file_size, storage_path, created_at')
+    .eq('bank_link_id', link.id)
+    .order('created_at', { ascending: false })
+
+  const myUploads = await Promise.all(
+    (lenderDocs ?? []).map(async (doc) => {
+      const { data: signed } = await supabase.storage
+        .from('loan-documents')
+        .createSignedUrl(doc.storage_path, 60 * 60 * 4)
+      return { ...doc, url: signed?.signedUrl ?? null }
+    })
+  )
+
+  return NextResponse.json({
+    loan,
+    contact,
+    documents: docs,
+    property_image_url,
+    decision: link.decision ?? null,
+    my_uploads: myUploads,
+    bank_link_id: link.id,
+  })
 }

@@ -116,8 +116,10 @@ export default function LoanDetailPage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Bank links
-  type BankLink = { id: string; token: string; label: string | null; expires_at: string; revoked_at: string | null; created_at: string }
+  type BankLink = { id: string; token: string; label: string | null; expires_at: string; revoked_at: string | null; created_at: string; decision: string | null; is_selected: boolean }
+  type LenderDoc = { id: string; file_name: string; doc_label: string; file_size: number | null; created_at: string; bank_link_id: string; lender_label: string | null }
   const [bankLinks, setBankLinks] = useState<BankLink[]>([])
+  const [lenderDocs, setLenderDocs] = useState<LenderDoc[]>([])
   const [showLinkForm, setShowLinkForm] = useState(false)
   const [linkLabel, setLinkLabel] = useState('')
   const [linkPassword, setLinkPassword] = useState('')
@@ -184,7 +186,20 @@ export default function LoanDetailPage() {
 
   const fetchBankLinks = useCallback(async () => {
     const res = await fetch(`/api/bank-links?loan_id=${id}`)
-    if (res.ok) setBankLinks(await res.json())
+    if (res.ok) {
+      const links: BankLink[] = await res.json()
+      setBankLinks(links)
+      // Fetch all lender docs for this loan
+      const res2 = await fetch(`/api/loans/${id}/lender-documents`)
+      if (res2.ok) {
+        const raw: { id: string; file_name: string; doc_label: string; file_size: number | null; created_at: string; bank_link_id: string }[] = await res2.json()
+        const withLabel = raw.map((d) => ({
+          ...d,
+          lender_label: links.find((l) => l.id === d.bank_link_id)?.label ?? null,
+        }))
+        setLenderDocs(withLabel)
+      }
+    }
   }, [id])
 
   const fetchLenders = useCallback(async () => {
@@ -393,6 +408,24 @@ export default function LoanDetailPage() {
     if (!res.ok) return
     const { url } = await res.json()
     window.open(url, '_blank')
+  }
+
+  async function viewLenderDoc(docId: string, bankLinkId: string) {
+    const link = bankLinks.find((l) => l.id === bankLinkId)
+    if (!link) return
+    const res = await fetch(`/api/bank-links/${link.token}/documents/${docId}/url`)
+    if (!res.ok) return
+    const { url } = await res.json()
+    window.open(url, '_blank')
+  }
+
+  async function toggleSelected(linkId: string, currentlySelected: boolean) {
+    await fetch(`/api/bank-links/${linkId}/select`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ selected: !currentlySelected }),
+    })
+    await fetchBankLinks()
   }
 
   async function sendBrokerAgreement() {
@@ -1022,28 +1055,45 @@ export default function LoanDetailPage() {
             {bankLinks.map((link) => {
               const isActive = !link.revoked_at && new Date(link.expires_at) > new Date()
               const linkUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/loan-file/${link.token}`
+              const decisionBadge = link.decision === 'interested'
+                ? <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">Interested</span>
+                : link.decision === 'pass'
+                ? <span className="text-xs font-medium text-gray-500 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full">Pass</span>
+                : <span className="text-xs text-gray-400">No response</span>
               return (
-                <div key={link.id} className={`flex items-center justify-between p-3 rounded-lg border text-sm ${isActive ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-50 opacity-60'}`}>
-                  <div>
-                    <p className="font-medium text-gray-800">{link.label || 'Unnamed link'}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {isActive ? `Expires ${new Date(link.expires_at).toLocaleDateString()}` : link.revoked_at ? 'Revoked' : 'Expired'}
-                    </p>
+                <div key={link.id} className={`p-3 rounded-lg border text-sm ${isActive ? (link.is_selected ? 'border-[#003087] bg-blue-50' : 'border-gray-200 bg-white') : 'border-gray-100 bg-gray-50 opacity-60'}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="font-medium text-gray-800 truncate">{link.label || 'Unnamed link'}</p>
+                      {decisionBadge}
+                      {link.is_selected && <span className="text-xs font-semibold text-[#003087]">★ Selected</span>}
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      {isActive && (
+                        <button
+                          onClick={() => toggleSelected(link.id, link.is_selected)}
+                          className={`text-xs px-3 py-1.5 rounded border ${link.is_selected ? 'border-[#003087] text-[#003087] hover:bg-blue-50' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                        >
+                          {link.is_selected ? 'Deselect' : 'Select'}
+                        </button>
+                      )}
+                      {isActive && (
+                        <button onClick={() => copyLink(linkUrl)}
+                          className="text-xs border border-gray-300 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-50">
+                          Copy URL
+                        </button>
+                      )}
+                      {isActive && (
+                        <button onClick={() => revokeLink(link.id)}
+                          className="text-xs border border-red-200 text-red-600 px-3 py-1.5 rounded hover:bg-red-50">
+                          Revoke
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    {isActive && (
-                      <button onClick={() => copyLink(linkUrl)}
-                        className="text-xs border border-gray-300 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-50">
-                        Copy URL
-                      </button>
-                    )}
-                    {isActive && (
-                      <button onClick={() => revokeLink(link.id)}
-                        className="text-xs border border-red-200 text-red-600 px-3 py-1.5 rounded hover:bg-red-50">
-                        Revoke
-                      </button>
-                    )}
-                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {isActive ? `Expires ${new Date(link.expires_at).toLocaleDateString()}` : link.revoked_at ? 'Revoked' : 'Expired'}
+                  </p>
                 </div>
               )
             })}
@@ -1183,6 +1233,35 @@ if (val.trim().length > 0) {
             className="text-sm text-[#003087] font-medium hover:underline">
             + Generate New Link
           </button>
+        )}
+      </Section>
+
+      {/* ── Lender Uploads ── */}
+      <Section title="Lender Uploads">
+        <p className="text-xs text-gray-500 mb-3">Documents uploaded by lenders through their portal. Select a lender above to share their uploads with the borrower.</p>
+        {lenderDocs.length === 0 ? (
+          <p className="text-sm text-gray-400 italic">No lender uploads yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {lenderDocs.map((doc) => (
+              <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-200 text-sm">
+                <div>
+                  <p className="font-medium text-gray-800">{doc.file_name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {doc.doc_label.replace(/_/g, ' ')}
+                    {doc.lender_label ? ` · ${doc.lender_label}` : ''}
+                    {doc.file_size ? ` · ${fmtSize(doc.file_size)}` : ''}
+                  </p>
+                </div>
+                <button
+                  onClick={() => viewLenderDoc(doc.id, doc.bank_link_id)}
+                  className="text-xs text-[#003087] hover:underline ml-4 flex-shrink-0"
+                >
+                  View
+                </button>
+              </div>
+            ))}
+          </div>
         )}
       </Section>
 

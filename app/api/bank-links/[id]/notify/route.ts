@@ -21,12 +21,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const { data: link } = await supabase
     .from('bank_share_links')
-    .select('loan_id, label, expires_at, revoked_at')
+    .select('id, loan_id, label, expires_at, revoked_at')
     .eq('token', params.id)
     .single()
 
   if (!link) return NextResponse.json({ error: 'link not found' }, { status: 404 })
   if (link.revoked_at) return NextResponse.json({ error: 'link revoked' }, { status: 403 })
+
+  // Persist decision so the portal can restore state on reload
+  await supabase.from('bank_share_links').update({ decision: action }).eq('id', link.id)
 
   const { data: loan } = await supabase
     .from('loans')
