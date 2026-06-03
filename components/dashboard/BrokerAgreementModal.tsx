@@ -34,6 +34,7 @@ export default function BrokerAgreementModal({
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [propertyAddress, setPropertyAddress] = useState('')
+  const [hnw, setHnw] = useState(false)
   const [brokerFee, setBrokerFee] = useState('')
   const [twoBorrowers, setTwoBorrowers] = useState(false)
   const [borrower2Name, setBorrower2Name] = useState('')
@@ -46,7 +47,7 @@ export default function BrokerAgreementModal({
     setSending(true)
     setError(null)
 
-    const payload: Record<string, string> = { broker_fee: formatBrokerFee(brokerFee) }
+    const payload: Record<string, string | boolean> = { broker_fee: formatBrokerFee(brokerFee), hnw }
 
     if (contactId) {
       payload.contact_id = contactId
@@ -105,6 +106,27 @@ export default function BrokerAgreementModal({
         </p>
 
         <div className="space-y-4">
+          {/* Template selector */}
+          <div className="flex gap-2">
+            {[
+              { value: false, label: 'Standard' },
+              { value: true,  label: 'High Net Worth' },
+            ].map(({ value, label }) => (
+              <button
+                key={String(value)}
+                type="button"
+                onClick={() => setHnw(value)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  hnw === value
+                    ? 'bg-[#003087] text-white border-[#003087]'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-[#003087]'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {/* Ad-hoc: name + email fields */}
           {!contactId && (
             <>
