@@ -99,7 +99,8 @@ export default function BankPortalPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const [pkg, setPkg] = useState<Package | null>(null)
   const [myUploads, setMyUploads] = useState<MyUpload[]>([])
-  const [uploadLabel, setUploadLabel] = useState('')
+  const [uploadLabel, setUploadLabel] = useState('term_sheet')
+  const [uploadOtherLabel, setUploadOtherLabel] = useState('')
   const [uploading, setUploading] = useState(false)
   const [uploadMsg, setUploadMsg] = useState('')
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -202,7 +203,10 @@ export default function BankPortalPage() {
     setUploadMsg('')
     const fd = new FormData()
     fd.append('file', file)
-    fd.append('doc_label', uploadLabel.trim() || 'other')
+    const resolvedLabel = uploadLabel === 'other' && uploadOtherLabel.trim()
+      ? uploadOtherLabel.trim()
+      : uploadLabel || 'other'
+    fd.append('doc_label', resolvedLabel)
     const res = await fetch(`/api/bank-links/${token}/documents`, { method: 'POST', body: fd })
     if (res.ok) {
       const { doc } = await res.json()
@@ -210,7 +214,8 @@ export default function BankPortalPage() {
       const urlRes = await fetch(`/api/bank-links/${token}/documents/${doc.id}/url`)
       const url = urlRes.ok ? (await urlRes.json()).url : null
       setMyUploads((prev) => [{ ...doc, url }, ...prev])
-      setUploadLabel('')
+      setUploadLabel('term_sheet')
+      setUploadOtherLabel('')
       setUploadMsg('Uploaded successfully.')
     } else {
       const json = await res.json()
@@ -448,13 +453,27 @@ export default function BankPortalPage() {
               Upload documents for this loan — term sheets, condition letters, commitment letters, etc. SAK Lending will be notified immediately.
             </p>
             <div className="flex gap-2 items-center mb-4 flex-wrap">
-              <input
-                type="text"
+              <select
                 value={uploadLabel}
-                onChange={(e) => setUploadLabel(e.target.value)}
-                placeholder="Document label (e.g. Term Sheet)"
-                className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087] w-56"
-              />
+                onChange={(e) => { setUploadLabel(e.target.value); setUploadOtherLabel('') }}
+                className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+              >
+                <option value="term_sheet">Term Sheet</option>
+                <option value="loan_commitment">Loan Commitment</option>
+                <option value="conditional_approval">Conditional Approval</option>
+                <option value="condition_list">Condition List</option>
+                <option value="closing_disclosure">Closing Disclosure</option>
+                <option value="other">Other</option>
+              </select>
+              {uploadLabel === 'other' && (
+                <input
+                  type="text"
+                  value={uploadOtherLabel}
+                  onChange={(e) => setUploadOtherLabel(e.target.value)}
+                  placeholder="Describe document..."
+                  className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087] w-48"
+                />
+              )}
               <input ref={uploadFileRef} type="file" onChange={uploadDoc} className="hidden" />
               <button
                 onClick={() => uploadFileRef.current?.click()}

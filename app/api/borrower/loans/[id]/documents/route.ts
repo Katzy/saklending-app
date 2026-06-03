@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import nodemailer from 'nodemailer'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getBorrowerContact } from '@/lib/auth/getBorrowerContact'
 
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // Verify loan belongs to this borrower
   const { data: loan } = await supabase
     .from('loans')
-    .select('id')
+    .select('id, address_street, address_city, address_state, contact_id')
     .eq('id', params.id)
     .eq('contact_id', auth.contact_id)
     .single()
@@ -48,6 +49,32 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     .single()
 
   if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 })
+
+  // Notify Scott
+  if (process.env.RESEND_API_KEY) {
+    const { data: contact } = await supabase
+      .from('contacts')
+      .select('first_name, last_name')
+      .eq('id', loan.contact_id)
+      .single()
+
+    const borrowerName = contact ? `${contact.first_name} ${contact.last_name}` : 'A borrower'
+    const addressLine = [loan.address_street, loan.address_city, loan.address_state].filter(Boolean).join(', ') || 'their loan'
+
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.resend.com',
+      port: 465,
+      secure: true,
+      auth: { user: 'resend', pass: process.env.RESEND_API_KEY },
+    })
+    await transporter.sendMail({
+      from: '"SAK Lending" <support@saklending.com>',
+      to: 'scott@saklending.com',
+      subject: `${borrowerName} uploaded a document — ${addressLine}`,
+      text: `${borrowerName} uploaded "${file.name}" (${doc_type}) to their loan at ${addressLine}.`,
+    })
+  }
+
   return NextResponse.json(data)
 }
 
