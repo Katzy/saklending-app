@@ -116,7 +116,7 @@ export default function LoanDetailPage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Bank links
-  type BankLink = { id: string; token: string; label: string | null; expires_at: string; revoked_at: string | null; created_at: string; decision: string | null; is_selected: boolean }
+  type BankLink = { id: string; token: string; label: string | null; expires_at: string; revoked_at: string | null; created_at: string; decision: string | null; is_selected: boolean; recipient_email: string | null; recipient_name: string | null }
   type LenderDoc = { id: string; file_name: string; doc_label: string; file_size: number | null; created_at: string; bank_link_id: string; lender_label: string | null }
   const [bankLinks, setBankLinks] = useState<BankLink[]>([])
   const [lenderDocs, setLenderDocs] = useState<LenderDoc[]>([])
@@ -124,6 +124,14 @@ export default function LoanDetailPage() {
   const [lenderDocBankLinkId, setLenderDocBankLinkId] = useState('')
   const [lenderDocLabel, setLenderDocLabel] = useState('other')
   const lenderDocFileRef = useRef<HTMLInputElement>(null)
+  // Notify bank modal
+  const [notifyLink, setNotifyLink] = useState<BankLink | null>(null)
+  const [notifyDocIds, setNotifyDocIds] = useState<Set<string>>(new Set())
+  const [notifyEmail, setNotifyEmail] = useState('')
+  const [notifyName, setNotifyName] = useState('')
+  const [notifyNote, setNotifyNote] = useState('')
+  const [notifySending, setNotifySending] = useState(false)
+  const [notifySent, setNotifySent] = useState(false)
   const [showLinkForm, setShowLinkForm] = useState(false)
   const [linkLabel, setLinkLabel] = useState('')
   const [linkPassword, setLinkPassword] = useState('')
@@ -440,6 +448,34 @@ export default function LoanDetailPage() {
   async function deleteLenderDoc(docId: string) {
     await fetch(`/api/loans/${id}/lender-documents?doc_id=${docId}`, { method: 'DELETE' })
     setLenderDocs((prev) => prev.filter((d) => d.id !== docId))
+  }
+
+  function openNotifyModal(link: BankLink) {
+    setNotifyLink(link)
+    setNotifyEmail(link.recipient_email ?? '')
+    setNotifyName(link.recipient_name ?? '')
+    setNotifyNote('')
+    setNotifyDocIds(new Set())
+    setNotifySent(false)
+  }
+
+  async function sendNotification() {
+    if (!notifyLink || !notifyEmail || !notifyDocIds.size) return
+    setNotifySending(true)
+    await fetch(`/api/bank-links/${notifyLink.id}/notify-docs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipient_email: notifyEmail,
+        recipient_name: notifyName,
+        doc_ids: Array.from(notifyDocIds),
+        note: notifyNote || undefined,
+        app_url: window.location.origin,
+      }),
+    })
+    setNotifySending(false)
+    setNotifySent(true)
+    setTimeout(() => setNotifyLink(null), 1500)
   }
 
   async function toggleSelected(linkId: string, currentlySelected: boolean) {
@@ -1107,6 +1143,12 @@ export default function LoanDetailPage() {
                         </button>
                       )}
                       {isActive && (
+                        <button onClick={() => openNotifyModal(link)}
+                          className="text-xs border border-blue-200 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-50">
+                          Notify Bank
+                        </button>
+                      )}
+                      {isActive && (
                         <button onClick={() => revokeLink(link.id)}
                           className="text-xs border border-red-200 text-red-600 px-3 py-1.5 rounded hover:bg-red-50">
                           Revoke
@@ -1412,6 +1454,110 @@ if (val.trim().length > 0) {
                 className="bg-[#003087] text-white px-4 py-2 rounded text-sm font-medium hover:bg-[#002070] disabled:opacity-50"
               >
                 {agreementSending ? 'Sending...' : 'Send for Signature'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notify Bank modal */}
+      {notifyLink && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-[520px] max-h-[80vh] flex flex-col">
+            <h2 className="text-lg font-bold text-gray-900 mb-1">Notify Bank of Documents</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Select documents to notify <strong>{notifyLink.label || 'this lender'}</strong> about. They&apos;ll receive an email with the list and their portal link.
+            </p>
+
+            <div className="overflow-y-auto flex-1 space-y-4">
+              {/* Document checklist */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Select Documents</p>
+                {docs.length === 0 ? (
+                  <p className="text-sm text-gray-400 italic">No documents on this loan yet.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {docs.map((doc) => {
+                      const label = ADMIN_DOC_TYPES.find((t) => t.value === doc.doc_type)?.label ?? doc.doc_type.replace(/_/g, ' ')
+                      const date = new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                      return (
+                        <label key={doc.id} className="flex items-start gap-2.5 p-2 rounded hover:bg-gray-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={notifyDocIds.has(doc.id)}
+                            onChange={(e) => {
+                              setNotifyDocIds((prev) => {
+                                const next = new Set(prev)
+                                if (e.target.checked) next.add(doc.id)
+                                else next.delete(doc.id)
+                                return next
+                              })
+                            }}
+                            className="mt-0.5 rounded"
+                          />
+                          <div className="text-sm">
+                            <p className="font-medium text-gray-800">{doc.file_name}</p>
+                            <p className="text-xs text-gray-400">{label} · Uploaded {date}</p>
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Email fields */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Recipient Email *</label>
+                  <input
+                    type="email"
+                    value={notifyEmail}
+                    onChange={(e) => setNotifyEmail(e.target.value)}
+                    placeholder="lender@bank.com"
+                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Recipient Name</label>
+                  <input
+                    value={notifyName}
+                    onChange={(e) => setNotifyName(e.target.value)}
+                    placeholder="John Smith"
+                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Custom Note (optional — replaces default message)</label>
+                <textarea
+                  rows={3}
+                  value={notifyNote}
+                  onChange={(e) => setNotifyNote(e.target.value)}
+                  placeholder="Leave blank for the default document notification message..."
+                  className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+                />
+              </div>
+
+              {notifySent && (
+                <p className="text-sm text-green-600 font-medium">Notification sent successfully!</p>
+              )}
+            </div>
+
+            <div className="flex gap-3 justify-end mt-4 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => setNotifyLink(null)}
+                className="border border-gray-300 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={sendNotification}
+                disabled={notifySending || !notifyEmail || notifyDocIds.size === 0}
+                className="bg-[#003087] text-white px-4 py-2 rounded text-sm font-medium hover:bg-[#002070] disabled:opacity-50"
+              >
+                {notifySending ? 'Sending...' : 'Send Notification'}
               </button>
             </div>
           </div>

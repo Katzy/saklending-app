@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('bank_share_links')
-    .insert({ loan_id, token, password_hash, expires_at, label: label || null })
+    .insert({ loan_id, token, password_hash, expires_at, label: label || null, recipient_email: recipient_email || null, recipient_name: recipient_name || null })
     .select('id, token, expires_at, label')
     .single()
 
@@ -142,7 +142,7 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('bank_share_links')
-    .select('id, token, label, expires_at, revoked_at, created_at, decision, is_selected')
+    .select('id, token, label, expires_at, revoked_at, created_at, decision, is_selected, recipient_email, recipient_name')
     .eq('loan_id', loan_id)
     .order('created_at', { ascending: false })
 
