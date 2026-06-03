@@ -23,6 +23,8 @@ export default function BorrowerLayout({ children }: { children: React.ReactNode
   useEffect(() => {
     setPwRequired(sessionStorage.getItem('pw_required') === '1')
     setChecked(true)
+    // Fire-and-forget: notify admin on borrower's first-ever login
+    fetch('/api/borrower/first-login', { method: 'POST' }).catch(() => {})
   }, [])
 
   // Redirect to profile until password is set

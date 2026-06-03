@@ -697,7 +697,6 @@ export default function LoanDetailPage() {
           <FSelect label="Program" k="loan_program" options={['bridge','permanent','rehab','ground_up']} labels={['Bridge','Long Term','Rehab','Ground Up Construction']} {...{ draft, set, editing }} />
           <FSelect label="Financing Preference" k="financing_preference" options={['institutional','private']} {...{ draft, set, editing }} />
           <FSelect label="Property Type" k="property_type" options={PROPERTY_TYPES} {...{ draft, set, editing }} />
-          <F label="State" k="state" {...{ draft, set, editing }} />
           <FCheck label="Show rate to borrower" k="show_rate_to_borrower" {...{ draft, set, editing }} />
         </div>
         <div className="mt-3">

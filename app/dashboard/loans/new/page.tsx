@@ -103,7 +103,6 @@ function NewLoanPage() {
       loan_program:            get('loan_program'),
       financing_preference:    get('financing_preference'),
       property_type:           get('property_type'),
-      state:                   get('state'),
       address_street:          get('address_street'),
       address_city:            get('address_city'),
       address_state:           get('address_state'),

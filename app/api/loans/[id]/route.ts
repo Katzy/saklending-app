@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 
+const PROPERTY_SYNC_FIELDS = ['address_street', 'address_city', 'address_state', 'address_zip', 'property_type', 'purchase_price'] as const
+
 // GET /api/loans/[id]
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createServiceClient()
@@ -11,6 +13,23 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 404 })
+
+  // Auto-populate blank fields from the linked property record
+  if (data?.property_id) {
+    const { data: property } = await supabase
+      .from('properties')
+      .select(PROPERTY_SYNC_FIELDS.join(', '))
+      .eq('id', data.property_id)
+      .single()
+    if (property) {
+      const d = data as unknown as Record<string, unknown>
+      const p = property as unknown as Record<string, unknown>
+      for (const field of PROPERTY_SYNC_FIELDS) {
+        if (!d[field] && p[field]) d[field] = p[field]
+      }
+    }
+  }
+
   return NextResponse.json(data)
 }
 
