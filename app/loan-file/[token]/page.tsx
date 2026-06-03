@@ -240,7 +240,9 @@ export default function BankPortalPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-[#003087] text-white py-4 px-6 flex items-center justify-between">
-        <Image src="/logo.jpg" alt="SAK Lending" width={120} height={44} className="h-9 w-auto brightness-0 invert" />
+        <div className="bg-white rounded px-2 py-1">
+          <Image src="/logo.jpg" alt="SAK Lending" width={120} height={44} className="h-7 w-auto" />
+        </div>
         <div className="text-right text-sm">
           <p className="font-medium">Loan Package — Confidential</p>
           <p className="text-blue-300 text-xs">For lender review only</p>
