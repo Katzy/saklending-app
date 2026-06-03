@@ -102,3 +102,35 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   return NextResponse.json({ ok: true, doc })
 }
+
+// DELETE /api/bank-links/[id]/documents?doc_id=  ([id] = token)
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const doc_id = new URL(req.url).searchParams.get('doc_id')
+  if (!doc_id) return NextResponse.json({ error: 'doc_id required' }, { status: 400 })
+
+  const supabase = createServiceClient()
+
+  const { data: link } = await supabase
+    .from('bank_share_links')
+    .select('id, revoked_at, expires_at')
+    .eq('token', params.id)
+    .single()
+
+  if (!link || link.revoked_at || new Date(link.expires_at) < new Date()) {
+    return NextResponse.json({ error: 'Link not valid' }, { status: 403 })
+  }
+
+  const { data: doc } = await supabase
+    .from('lender_documents')
+    .select('storage_path')
+    .eq('id', doc_id)
+    .eq('bank_link_id', link.id)
+    .single()
+
+  if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  await supabase.storage.from('loan-documents').remove([doc.storage_path])
+  await supabase.from('lender_documents').delete().eq('id', doc_id)
+
+  return NextResponse.json({ ok: true })
+}

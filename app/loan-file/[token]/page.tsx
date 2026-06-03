@@ -102,6 +102,7 @@ export default function BankPortalPage() {
   const [uploadLabel, setUploadLabel] = useState('')
   const [uploading, setUploading] = useState(false)
   const [uploadMsg, setUploadMsg] = useState('')
+  const [deleting, setDeleting] = useState<string | null>(null)
   const uploadFileRef = useRef<HTMLInputElement>(null)
 
   async function handleVerify(e: React.FormEvent) {
@@ -185,6 +186,13 @@ export default function BankPortalPage() {
     })
     setDecision(action)
     setDecisionSending(false)
+  }
+
+  async function deleteUpload(docId: string) {
+    setDeleting(docId)
+    const res = await fetch(`/api/bank-links/${token}/documents?doc_id=${docId}`, { method: 'DELETE' })
+    if (res.ok) setMyUploads((prev) => prev.filter((d) => d.id !== docId))
+    setDeleting(null)
   }
 
   async function uploadDoc(e: React.ChangeEvent<HTMLInputElement>) {
@@ -472,12 +480,21 @@ export default function BankPortalPage() {
                         {doc.file_size ? ` · ${fmtSize(doc.file_size)}` : ''}
                       </p>
                     </div>
-                    {doc.url && (
-                      <a href={doc.url} target="_blank" rel="noopener noreferrer"
-                        className="text-xs font-medium text-[#003087] border border-[#003087] px-3 py-1.5 rounded hover:bg-[#003087] hover:text-white transition flex-shrink-0 ml-4">
-                        View
-                      </a>
-                    )}
+                    <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                      {doc.url && (
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                          className="text-xs font-medium text-[#003087] border border-[#003087] px-3 py-1.5 rounded hover:bg-[#003087] hover:text-white transition">
+                          View
+                        </a>
+                      )}
+                      <button
+                        onClick={() => deleteUpload(doc.id)}
+                        disabled={deleting === doc.id}
+                        className="text-xs text-red-500 hover:text-red-700 hover:underline disabled:opacity-50"
+                      >
+                        {deleting === doc.id ? '...' : 'Remove'}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
