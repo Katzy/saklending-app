@@ -35,7 +35,6 @@ function NewLoanPage() {
 
   const [contacts, setContacts] = useState<Contact[]>([])
   const [contactId, setContactId] = useState(prefillContact)
-  const [coBorrowerId, setCoBorrowerId] = useState('')
   const [fullContact, setFullContact] = useState<FullContact | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -94,7 +93,6 @@ function NewLoanPage() {
     const data = {
       contact_id:              contactId || null,
       property_id:             prefillPropertyId || null,
-      co_borrower_contact_id:  coBorrowerId || null,
       loan_amount:             loanNum || null,
       purchase_price:          propNum || null,
       interest_rate:           rateNum || null,
@@ -166,32 +164,13 @@ function NewLoanPage() {
           )}
         </div>
 
-        {/* Co-borrower */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Co-Borrower <span className="text-gray-400 font-normal">(optional)</span>
-          </label>
-          {hasCoBorrower && (
-            <div className="mb-2 bg-blue-50 border border-blue-100 rounded px-3 py-2 text-sm text-blue-800">
-              On file: {fullContact!.co_borrower_first_name} {fullContact!.co_borrower_last_name}
-              {fullContact!.co_borrower_email && <span className="text-blue-500 ml-2">· {fullContact!.co_borrower_email}</span>}
-            </div>
-          )}
-          <select
-            value={coBorrowerId}
-            onChange={(e) => setCoBorrowerId(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
-          >
-            <option value="">— None / use contact&apos;s co-borrower on file —</option>
-            {contacts
-              .filter((c) => c.id !== contactId)
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.first_name} {c.last_name}{c.entity_name ? ` — ${c.entity_name}` : ''}
-                </option>
-              ))}
-          </select>
-        </div>
+        {/* Co-borrower — show on-file info only */}
+        {hasCoBorrower && (
+          <div className="bg-blue-50 border border-blue-100 rounded px-3 py-2 text-sm text-blue-800">
+            <span className="font-medium">Co-Borrower on file:</span> {fullContact!.co_borrower_first_name} {fullContact!.co_borrower_last_name}
+            {fullContact!.co_borrower_email && <span className="text-blue-500 ml-2">· {fullContact!.co_borrower_email}</span>}
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <div>
