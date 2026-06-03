@@ -5,6 +5,7 @@ const DOCUSEAL_API_URL = process.env.DOCUSEAL_API_URL!
 const DOCUSEAL_API_KEY = process.env.DOCUSEAL_API_KEY!
 const TEMPLATE_ID_1 = process.env.DOCUSEAL_TEMPLATE_ID_1!
 const TEMPLATE_ID_2 = process.env.DOCUSEAL_TEMPLATE_ID_2!
+const TEMPLATE_ID_3 = process.env.DOCUSEAL_TEMPLATE_ID_3!
 const SAK_EMAIL = 'scott@saklending.com'
 const SAK_NAME = 'Scott Katz'
 
@@ -26,7 +27,12 @@ export async function POST(req: NextRequest) {
       broker_fee,
       borrower_2_name,
       borrower_2_email,
+      hnw,
     } = body
+
+    if (hnw && !TEMPLATE_ID_3) {
+      return NextResponse.json({ error: 'High Net Worth template is not configured yet. Add DOCUSEAL_TEMPLATE_ID_3 to your environment variables.' }, { status: 500 })
+    }
 
     if (!broker_fee) return NextResponse.json({ error: 'broker_fee required' }, { status: 400 })
 
@@ -123,7 +129,7 @@ export async function POST(req: NextRequest) {
     }
 
     const twoBorrowers = !!(borrower_2_name && borrower_2_email)
-    const templateId = twoBorrowers ? TEMPLATE_ID_2 : TEMPLATE_ID_1
+    const templateId = hnw ? TEMPLATE_ID_3 : twoBorrowers ? TEMPLATE_ID_2 : TEMPLATE_ID_1
     const borrowerFirstName = borrowerName.split(' ')[0]
 
     const SUBJECT = 'SAK Lending Broker Agreement - Signature needed'

@@ -159,6 +159,7 @@ export default function LoanDetailPage() {
 
   // Broker agreement modal
   const [showAgreementModal, setShowAgreementModal] = useState(false)
+  const [agreementHnw, setAgreementHnw] = useState(false)
   const [agreementBrokerFee, setAgreementBrokerFee] = useState('')
   const [agreementTwoBorrowers, setAgreementTwoBorrowers] = useState(false)
   const [agreementBorrower2Name, setAgreementBorrower2Name] = useState('')
@@ -497,6 +498,7 @@ export default function LoanDetailPage() {
         body: JSON.stringify({
           loan_id: id,
           broker_fee: formatBrokerFee(agreementBrokerFee),
+          hnw: agreementHnw,
           ...(agreementTwoBorrowers && {
             borrower_2_name: agreementBorrower2Name,
             borrower_2_email: agreementBorrower2Email,
@@ -513,6 +515,7 @@ export default function LoanDetailPage() {
         setTimeout(() => {
           setShowAgreementModal(false)
           setAgreementSent(false)
+          setAgreementHnw(false)
           setAgreementBrokerFee('')
           setAgreementTwoBorrowers(false)
           setAgreementBorrower2Name('')
@@ -1380,6 +1383,27 @@ if (val.trim().length > 0) {
             </p>
 
             <div className="space-y-4">
+              {/* Template selector */}
+              <div className="flex gap-2">
+                {[
+                  { value: false, label: 'Standard' },
+                  { value: true,  label: 'High Net Worth' },
+                ].map(({ value, label }) => (
+                  <button
+                    key={String(value)}
+                    type="button"
+                    onClick={() => setAgreementHnw(value)}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                      agreementHnw === value
+                        ? 'bg-[#003087] text-white border-[#003087]'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-[#003087]'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Broker Fee (%)</label>
                 <input
@@ -1443,7 +1467,7 @@ if (val.trim().length > 0) {
 
             <div className="flex gap-3 justify-end mt-6">
               <button
-                onClick={() => { setShowAgreementModal(false); setAgreementError(null) }}
+                onClick={() => { setShowAgreementModal(false); setAgreementError(null); setAgreementHnw(false) }}
                 className="border border-gray-300 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-50"
               >
                 Cancel
