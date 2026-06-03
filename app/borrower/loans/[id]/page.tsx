@@ -18,6 +18,8 @@ type Loan = {
   stage: string
   purchase_price: number | null
   arv: number | null
+  interest_rate: number | null
+  show_rate_to_borrower: boolean
 }
 
 type Doc = {
@@ -219,6 +221,12 @@ export default function BorrowerLoanDetailPage() {
               <p className="text-gray-800 mt-0.5 font-semibold">{fmt$(loan.loan_amount)}</p>
             </div>
           )}
+          <div>
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Interest Rate</p>
+            <p className="text-gray-800 mt-0.5 font-semibold">
+              {loan.show_rate_to_borrower && loan.interest_rate ? `${loan.interest_rate}%` : 'TBD'}
+            </p>
+          </div>
           {loan.loan_program && (
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Program</p>
