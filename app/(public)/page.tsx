@@ -122,16 +122,16 @@ export default function HomePage() {
             </thead>
             <tbody>
               {ratesLoading
-                ? Array.from({ length: 13 }).map((_, i) => (
+                ? Array.from({ length: 9 }).map((_, i) => (
                     <tr key={i}>
-                      <td colSpan={3} className="px-2 py-1 text-xs text-center text-gray-400 border border-gray-200 bg-[powderblue]">Loading…</td>
+                      <td colSpan={3} className="px-2 py-2 text-xs text-center text-gray-400 border border-gray-200 bg-[powderblue]">Loading…</td>
                     </tr>
                   ))
                 : rates.map((rate, i) => (
                     <tr key={i}>
-                      <td className="px-2 py-1 text-xs border border-gray-200 bg-[powderblue]">{rate.name}</td>
-                      <td className="px-2 py-1 text-xs text-center border border-gray-200 bg-[powderblue]">{rate.today}</td>
-                      <td className="px-2 py-1 text-xs text-center border border-gray-200 bg-[powderblue]">{rate.thirtyDaysAgo}</td>
+                      <td className="px-2 py-2 text-xs border border-gray-200 bg-[powderblue]">{rate.name}</td>
+                      <td className="px-2 py-2 text-xs text-center border border-gray-200 bg-[powderblue]">{rate.today}</td>
+                      <td className="px-2 py-2 text-xs text-center border border-gray-200 bg-[powderblue]">{rate.thirtyDaysAgo}</td>
                     </tr>
                   ))}
             </tbody>
@@ -179,16 +179,16 @@ export default function HomePage() {
             </thead>
             <tbody>
               {ratesLoading
-                ? Array.from({ length: 13 }).map((_, i) => (
+                ? Array.from({ length: 9 }).map((_, i) => (
                     <tr key={i}>
-                      <td colSpan={3} className="px-3 py-1.5 text-xs text-center text-gray-400 border border-gray-200">Loading…</td>
+                      <td colSpan={3} className="px-3 py-2.5 text-xs text-center text-gray-400 border border-gray-200">Loading…</td>
                     </tr>
                   ))
                 : rates.map((rate, i) => (
                     <tr key={i}>
-                      <td className="px-3 py-1.5 text-xs border border-gray-200">{rate.name}</td>
-                      <td className="px-3 py-1.5 text-xs text-center border border-gray-200">{rate.today}</td>
-                      <td className="px-3 py-1.5 text-xs text-center border border-gray-200">{rate.thirtyDaysAgo}</td>
+                      <td className="px-3 py-2.5 text-xs border border-gray-200">{rate.name}</td>
+                      <td className="px-3 py-2.5 text-xs text-center border border-gray-200">{rate.today}</td>
+                      <td className="px-3 py-2.5 text-xs text-center border border-gray-200">{rate.thirtyDaysAgo}</td>
                     </tr>
                   ))}
             </tbody>
