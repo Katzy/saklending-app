@@ -37,31 +37,29 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (link.decision !== 'interested') return NextResponse.json({ error: 'You must express interest before uploading' }, { status: 403 })
 
   const formData = await req.formData()
-  const file = formData.get('file') as File | null
+  const files = formData.getAll('file') as File[]
   const doc_label = (formData.get('doc_label') as string) || 'other'
-  if (!file) return NextResponse.json({ error: 'file required' }, { status: 400 })
+  if (!files.length) return NextResponse.json({ error: 'file required' }, { status: 400 })
 
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-  const storagePath = `loans/${link.loan_id}/lender/${Date.now()}_${safeName}`
+  // Upload all files
+  const docs: { id: string; file_name: string; doc_label: string; file_size: number; created_at: string }[] = []
+  for (const file of files) {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const storagePath = `loans/${link.loan_id}/lender/${Date.now()}_${safeName}`
 
-  const { error: uploadError } = await supabase.storage
-    .from('loan-documents')
-    .upload(storagePath, file, { contentType: file.type })
-  if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
+    const { error: uploadError } = await supabase.storage
+      .from('loan-documents')
+      .upload(storagePath, file, { contentType: file.type })
+    if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
 
-  const { data: doc, error: dbError } = await supabase
-    .from('lender_documents')
-    .insert({
-      loan_id: link.loan_id,
-      bank_link_id: link.id,
-      file_name: file.name,
-      doc_label,
-      storage_path: storagePath,
-      file_size: file.size,
-    })
-    .select('id, file_name, doc_label, file_size, created_at')
-    .single()
-  if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 })
+    const { data: doc, error: dbError } = await supabase
+      .from('lender_documents')
+      .insert({ loan_id: link.loan_id, bank_link_id: link.id, file_name: file.name, doc_label, storage_path: storagePath, file_size: file.size })
+      .select('id, file_name, doc_label, file_size, created_at')
+      .single()
+    if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 })
+    if (doc) docs.push(doc)
+  }
 
   // Fetch loan address and borrower email for notifications
   const { data: loan } = await supabase
@@ -72,11 +70,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const addressLine = [loan?.address_street, loan?.address_city, loan?.address_state].filter(Boolean).join(', ') || 'your loan'
   const lenderLabel = link.label || 'Your lender'
+  const fileList = docs.map(d => `• ${d.file_name}`).join('\n')
 
-  // Always notify Scott
-  const sakSubject = `${lenderLabel} uploaded a document — ${addressLine}`
-  const sakBody = `${lenderLabel} uploaded "${file.name}" (${doc_label}) to the loan at ${addressLine}.`
-  await sendEmail(SAK_EMAIL, sakSubject, sakBody)
+  // One email to Scott summarizing all uploads
+  const sakSubject = `${lenderLabel} uploaded ${docs.length} document${docs.length > 1 ? 's' : ''} — ${addressLine}`
+  await sendEmail(SAK_EMAIL, sakSubject, `${lenderLabel} uploaded the following to the loan at ${addressLine}:\n\n${fileList}`)
 
   // Notify borrower only if this lender is selected
   if (link.is_selected && loan?.contact_id) {
@@ -87,12 +85,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       .single()
 
     if (contact?.email) {
-      const borrowerSubject = `New document available for your loan — ${addressLine}`
+      const borrowerSubject = `New document${docs.length > 1 ? 's' : ''} available for your loan — ${addressLine}`
       const borrowerBody = [
         `Hi ${contact.first_name},`,
         ``,
-        `A new document has been uploaded to your loan file at ${addressLine}.`,
-        `Please log in to your borrower portal to review it.`,
+        `${docs.length === 1 ? 'A new document has' : 'New documents have'} been uploaded to your loan file at ${addressLine}.`,
+        `Please log in to your borrower portal to review ${docs.length === 1 ? 'it' : 'them'}.`,
         ``,
         `SAK Lending`,
       ].join('\n')
@@ -100,7 +98,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
   }
 
-  return NextResponse.json({ ok: true, doc })
+  return NextResponse.json({ ok: true, docs })
 }
 
 // DELETE /api/bank-links/[id]/documents?doc_id=  ([id] = token)

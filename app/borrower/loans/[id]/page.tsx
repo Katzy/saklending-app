@@ -81,14 +81,16 @@ export default function BorrowerLoanDetailPage() {
   const [selectedLenderLabel, setSelectedLenderLabel] = useState<string | null>(null)
   const [viewingLender, setViewingLender] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [docType, setDocType] = useState('other')
-  const [otherDocName, setOtherDocName] = useState('')
   const [uploading, setUploading] = useState(false)
   const [uploadMsg, setUploadMsg] = useState('')
   const [deleting, setDeleting] = useState<string | null>(null)
   const [downloading, setDownloading] = useState<string | null>(null)
   const [viewing, setViewing] = useState<string | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+
+  type PendingRow = { id: string; file: File | null; docType: string; otherName: string }
+  const newRow = (): PendingRow => ({ id: Math.random().toString(36).slice(2), file: null, docType: 'pfs', otherName: '' })
+  const [pendingRows, setPendingRows] = useState<PendingRow[]>([newRow()])
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const fetchData = useCallback(async () => {
     const res = await fetch(`/api/borrower/loans/${id}`)
@@ -103,30 +105,35 @@ export default function BorrowerLoanDetailPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  async function upload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+  function updateRow(rowId: string, patch: Partial<PendingRow>) {
+    setPendingRows((prev) => prev.map((r) => r.id === rowId ? { ...r, ...patch } : r))
+  }
+
+  function removeRow(rowId: string) {
+    setPendingRows((prev) => prev.length > 1 ? prev.filter((r) => r.id !== rowId) : prev)
+  }
+
+  async function uploadAll() {
+    const ready = pendingRows.filter((r) => r.file)
+    if (!ready.length) { setUploadMsg('Please choose at least one file.'); return }
     setUploading(true)
     setUploadMsg('')
-
-    const resolvedDocType = docType === 'other' && otherDocName.trim()
-      ? otherDocName.trim()
-      : docType
-
     const fd = new FormData()
-    fd.append('file', file)
-    fd.append('doc_type', resolvedDocType)
-
-    const res = await fetch(`/api/borrower/loans/${id}/documents`, { method: 'POST', body: fd })
+    for (const row of ready) {
+      fd.append('file', row.file!)
+      const resolved = row.docType === 'other' && row.otherName.trim() ? row.otherName.trim() : row.docType
+      fd.append('doc_type', resolved)
+    }
+    const res = await fetch(`/api/borrower/loans/${id}/documents/batch`, { method: 'POST', body: fd })
     if (res.ok) {
-      setUploadMsg(`"${file.name}" uploaded successfully.`)
+      setUploadMsg(`${ready.length} file${ready.length > 1 ? 's' : ''} uploaded successfully.`)
+      setPendingRows([newRow()])
       await fetchData()
     } else {
       const json = await res.json()
       setUploadMsg(`Upload failed: ${json.error}`)
     }
     setUploading(false)
-    if (fileRef.current) fileRef.current.value = ''
   }
 
   async function deleteDoc(docId: string) {
@@ -248,36 +255,63 @@ export default function BorrowerLoanDetailPage() {
 
       {/* Document upload */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-base font-semibold text-gray-900 mb-1">Documents</h2>
+        <h2 className="text-base font-semibold text-gray-900 mb-1">Upload Documents</h2>
         <p className="text-sm text-gray-500 mb-5">
-          Upload documents for your broker. Select the document type before uploading.
+          Add one or more documents, select the type for each, then click Upload All.
         </p>
 
-        {/* Upload control */}
-        <div className="flex gap-3 items-center mb-5 flex-wrap">
-          <select
-            value={docType}
-            onChange={(e) => { setDocType(e.target.value); setOtherDocName('') }}
-            className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
-          >
-            {DOC_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
-          {docType === 'other' && (
-            <input
-              type="text"
-              placeholder="Document name"
-              value={otherDocName}
-              onChange={(e) => setOtherDocName(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087] w-48"
-            />
-          )}
-          <input ref={fileRef} type="file" onChange={upload} className="hidden" />
+        {/* Pending rows */}
+        <div className="space-y-3 mb-4">
+          {pendingRows.map((row) => (
+            <div key={row.id} className="flex gap-2 items-center flex-wrap">
+              <select
+                value={row.docType}
+                onChange={(e) => updateRow(row.id, { docType: e.target.value, otherName: '' })}
+                className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+              >
+                {DOC_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+              {row.docType === 'other' && (
+                <input
+                  type="text"
+                  placeholder="Document name"
+                  value={row.otherName}
+                  onChange={(e) => updateRow(row.id, { otherName: e.target.value })}
+                  className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087] w-44"
+                />
+              )}
+              <input
+                ref={(el) => { fileRefs.current[row.id] = el }}
+                type="file"
+                onChange={(e) => updateRow(row.id, { file: e.target.files?.[0] ?? null })}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileRefs.current[row.id]?.click()}
+                className="border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm hover:bg-gray-50 truncate max-w-[200px]"
+              >
+                {row.file ? row.file.name : 'Choose File'}
+              </button>
+              {pendingRows.length > 1 && (
+                <button onClick={() => removeRow(row.id)} className="text-gray-300 hover:text-red-400 text-sm">✕</button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-3 items-center mb-5">
           <button
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
+            onClick={() => setPendingRows((prev) => [...prev, newRow()])}
+            className="text-sm text-[#003087] font-medium hover:underline"
+          >
+            + Add Another Document
+          </button>
+          <button
+            onClick={uploadAll}
+            disabled={uploading || !pendingRows.some((r) => r.file)}
             className="bg-[#003087] text-white px-4 py-2 rounded text-sm font-medium hover:bg-[#002070] disabled:opacity-50"
           >
-            {uploading ? 'Uploading...' : 'Choose File & Upload'}
+            {uploading ? 'Uploading...' : 'Upload All'}
           </button>
         </div>
 

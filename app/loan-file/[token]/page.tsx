@@ -197,26 +197,31 @@ export default function BankPortalPage() {
   }
 
   async function uploadDoc(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
     setUploading(true)
     setUploadMsg('')
     const fd = new FormData()
-    fd.append('file', file)
+    for (const file of files) fd.append('file', file)
     const resolvedLabel = uploadLabel === 'other' && uploadOtherLabel.trim()
       ? uploadOtherLabel.trim()
       : uploadLabel || 'other'
     fd.append('doc_label', resolvedLabel)
     const res = await fetch(`/api/bank-links/${token}/documents`, { method: 'POST', body: fd })
     if (res.ok) {
-      const { doc } = await res.json()
-      // Re-fetch signed URL for the new doc so it's viewable immediately
-      const urlRes = await fetch(`/api/bank-links/${token}/documents/${doc.id}/url`)
-      const url = urlRes.ok ? (await urlRes.json()).url : null
-      setMyUploads((prev) => [{ ...doc, url }, ...prev])
+      const { docs } = await res.json()
+      // Fetch signed URLs for all new docs
+      const withUrls = await Promise.all(
+        (docs ?? []).map(async (doc: { id: string; file_name: string; doc_label: string; file_size: number | null; created_at: string }) => {
+          const urlRes = await fetch(`/api/bank-links/${token}/documents/${doc.id}/url`)
+          const url = urlRes.ok ? (await urlRes.json()).url : null
+          return { ...doc, url }
+        })
+      )
+      setMyUploads((prev) => [...withUrls.reverse(), ...prev])
       setUploadLabel('term_sheet')
       setUploadOtherLabel('')
-      setUploadMsg('Uploaded successfully.')
+      setUploadMsg(`${files.length} file${files.length > 1 ? 's' : ''} uploaded successfully.`)
     } else {
       const json = await res.json()
       setUploadMsg(json.error ?? 'Upload failed.')
@@ -474,7 +479,7 @@ export default function BankPortalPage() {
                   className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087] w-48"
                 />
               )}
-              <input ref={uploadFileRef} type="file" onChange={uploadDoc} className="hidden" />
+              <input ref={uploadFileRef} type="file" multiple onChange={uploadDoc} className="hidden" />
               <button
                 onClick={() => uploadFileRef.current?.click()}
                 disabled={uploading}
