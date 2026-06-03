@@ -120,6 +120,10 @@ export default function LoanDetailPage() {
   type LenderDoc = { id: string; file_name: string; doc_label: string; file_size: number | null; created_at: string; bank_link_id: string; lender_label: string | null }
   const [bankLinks, setBankLinks] = useState<BankLink[]>([])
   const [lenderDocs, setLenderDocs] = useState<LenderDoc[]>([])
+  const [lenderDocUploading, setLenderDocUploading] = useState(false)
+  const [lenderDocBankLinkId, setLenderDocBankLinkId] = useState('')
+  const [lenderDocLabel, setLenderDocLabel] = useState('other')
+  const lenderDocFileRef = useRef<HTMLInputElement>(null)
   const [showLinkForm, setShowLinkForm] = useState(false)
   const [linkLabel, setLinkLabel] = useState('')
   const [linkPassword, setLinkPassword] = useState('')
@@ -417,6 +421,25 @@ export default function LoanDetailPage() {
     if (!res.ok) return
     const { url } = await res.json()
     window.open(url, '_blank')
+  }
+
+  async function uploadLenderDoc(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !lenderDocBankLinkId) return
+    setLenderDocUploading(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('bank_link_id', lenderDocBankLinkId)
+    fd.append('doc_label', lenderDocLabel)
+    await fetch(`/api/loans/${id}/lender-documents`, { method: 'POST', body: fd })
+    await fetchBankLinks()
+    setLenderDocUploading(false)
+    if (lenderDocFileRef.current) lenderDocFileRef.current.value = ''
+  }
+
+  async function deleteLenderDoc(docId: string) {
+    await fetch(`/api/loans/${id}/lender-documents?doc_id=${docId}`, { method: 'DELETE' })
+    setLenderDocs((prev) => prev.filter((d) => d.id !== docId))
   }
 
   async function toggleSelected(linkId: string, currentlySelected: boolean) {
@@ -1238,7 +1261,39 @@ if (val.trim().length > 0) {
 
       {/* ── Lender Uploads ── */}
       <Section title="Lender Uploads">
-        <p className="text-xs text-gray-500 mb-3">Documents uploaded by lenders through their portal. Select a lender above to share their uploads with the borrower.</p>
+        <p className="text-xs text-gray-500 mb-3">Documents uploaded by lenders through their portal, or added by you on their behalf. Select a lender above to share their uploads with the borrower.</p>
+
+        {/* Admin upload form */}
+        {bankLinks.filter(l => !l.revoked_at).length > 0 && (
+          <div className="flex gap-2 items-center mb-4 flex-wrap">
+            <select
+              value={lenderDocBankLinkId}
+              onChange={(e) => setLenderDocBankLinkId(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]"
+            >
+              <option value="">— Select bank —</option>
+              {bankLinks.filter(l => !l.revoked_at).map(l => (
+                <option key={l.id} value={l.id}>{l.label || 'Unnamed link'}</option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={lenderDocLabel}
+              onChange={(e) => setLenderDocLabel(e.target.value)}
+              placeholder="Label (e.g. Term Sheet)"
+              className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087] w-44"
+            />
+            <input ref={lenderDocFileRef} type="file" onChange={uploadLenderDoc} className="hidden" />
+            <button
+              onClick={() => lenderDocFileRef.current?.click()}
+              disabled={lenderDocUploading || !lenderDocBankLinkId}
+              className="border border-[#003087] text-[#003087] px-4 py-1.5 rounded text-sm hover:bg-blue-50 disabled:opacity-50"
+            >
+              {lenderDocUploading ? 'Uploading...' : '+ Upload'}
+            </button>
+          </div>
+        )}
+
         {lenderDocs.length === 0 ? (
           <p className="text-sm text-gray-400 italic">No lender uploads yet.</p>
         ) : (
@@ -1253,12 +1308,20 @@ if (val.trim().length > 0) {
                     {doc.file_size ? ` · ${fmtSize(doc.file_size)}` : ''}
                   </p>
                 </div>
-                <button
-                  onClick={() => viewLenderDoc(doc.id, doc.bank_link_id)}
-                  className="text-xs text-[#003087] hover:underline ml-4 flex-shrink-0"
-                >
-                  View
-                </button>
+                <div className="flex gap-3 ml-4 flex-shrink-0">
+                  <button
+                    onClick={() => viewLenderDoc(doc.id, doc.bank_link_id)}
+                    className="text-xs text-[#003087] hover:underline"
+                  >
+                    View
+                  </button>
+                  <button
+                    onClick={() => deleteLenderDoc(doc.id)}
+                    className="text-xs text-red-500 hover:text-red-700 hover:underline"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             ))}
           </div>
