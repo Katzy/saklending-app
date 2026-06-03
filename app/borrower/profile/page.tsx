@@ -55,7 +55,8 @@ export default function BorrowerProfilePage() {
 
   const { clear: clearPwRequired } = usePasswordRequired()
   const [isOtp, setIsOtp] = useState(false)
-  const [pwDone, setPwDone] = useState(false) // true = hide password form permanently
+  const [pwDone, setPwDone] = useState(false)     // true = hide password form permanently
+  const [justSetPw, setJustSetPw] = useState(false) // true only immediately after setting in this session
 
   // Password section
   const [newPassword, setNewPassword] = useState('')
@@ -131,6 +132,7 @@ export default function BorrowerProfilePage() {
       setConfirmPassword('')
       setIsOtp(false)
       setPwDone(true)
+      setJustSetPw(true)
       clearPwRequired()
       // Persist so the form stays hidden on future visits
       const supabase = createClient()
@@ -300,9 +302,9 @@ export default function BorrowerProfilePage() {
 
       {/* Set / Change Password (always shown at bottom for returning users) */}
       {!isOtp && !pwDone && <PasswordCard pwSectionRef={pwSectionRef} newPassword={newPassword} setNewPassword={setNewPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} pwSaving={pwSaving} pwMsg={pwMsg} onSave={setPassword} />}
-      {pwDone && (
+      {justSetPw && (
         <div className="mt-6 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
-          Password set. You can now log in anytime at <span className="font-medium">/login</span> with your email and password.
+          Password set. You can now log in anytime at <span className="font-medium">saklending.com/login</span> with your email and password.
         </div>
       )}
     </div>
