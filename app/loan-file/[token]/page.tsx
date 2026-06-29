@@ -19,6 +19,7 @@ type Package = {
   contact: Contact | null
   documents: Document[]
   property_image_url: string | null
+  property_image_urls: string[]
   decision: 'interested' | 'pass' | null
   my_uploads: MyUpload[]
   bank_link_id: string
@@ -104,6 +105,8 @@ export default function BankPortalPage() {
   const [uploading, setUploading] = useState(false)
   const [uploadMsg, setUploadMsg] = useState('')
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [imageLightbox, setImageLightbox] = useState(false)
+  const [imageIndex, setImageIndex] = useState(0)
   const uploadFileRef = useRef<HTMLInputElement>(null)
 
   async function handleVerify(e: React.FormEvent) {
@@ -231,7 +234,7 @@ export default function BankPortalPage() {
   }
 
   if (!pkg) return null
-  const { loan, contact, documents, property_image_url } = pkg
+  const { loan, contact, documents, property_image_url, property_image_urls = [] } = pkg
   const noi = calcNOI(loan)
   const netWorth = calcNetWorth(loan)
 
@@ -297,14 +300,54 @@ export default function BankPortalPage() {
           )}
         </div>
 
-        {/* ── Property Image ── */}
-        {(property_image_url || loan.address_street) && (
+        {/* ── Property Image carousel ── */}
+        {(property_image_urls.length > 0 || loan.address_street) && (
           <div className="rounded-lg overflow-hidden border border-gray-200">
-            {property_image_url ? (
-              <Image src={property_image_url} alt="Property" width={900} height={400} className="w-full object-cover max-h-72" unoptimized />
-            ) : (
-              <StreetView street={loan.address_street} city={loan.address_city} state={loan.address_state} zip={loan.address_zip} width={900} height={400} className="w-full object-cover max-h-72" />
-            )}
+            <div className="relative group">
+              <div className="cursor-zoom-in" onClick={() => property_image_urls.length > 0 && setImageLightbox(true)}>
+                {property_image_urls.length > 0 ? (
+                  <Image src={property_image_urls[imageIndex]} alt="Property" width={900} height={400} className="w-full object-cover max-h-72" unoptimized />
+                ) : (
+                  <StreetView street={loan.address_street} city={loan.address_city} state={loan.address_state} zip={loan.address_zip} width={900} height={400} className="w-full object-cover max-h-72" />
+                )}
+                {property_image_urls.length > 0 && (
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all flex items-center justify-center pointer-events-none">
+                    <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 bg-black bg-opacity-50 px-2 py-1 rounded transition-all">
+                      Click to expand
+                    </span>
+                  </div>
+                )}
+              </div>
+              {property_image_urls.length > 1 && (
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setImageIndex((i) => (i - 1 + property_image_urls.length) % property_image_urls.length) }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-40 hover:bg-opacity-60 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setImageIndex((i) => (i + 1) % property_image_urls.length) }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-40 hover:bg-opacity-60 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm"
+                  >
+                    ›
+                  </button>
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black bg-opacity-40 text-white text-xs px-2 py-0.5 rounded-full">
+                    {imageIndex + 1} / {property_image_urls.length}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Image lightbox */}
+        {imageLightbox && property_image_urls[imageIndex] && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 cursor-zoom-out p-4"
+            onClick={() => setImageLightbox(false)}
+          >
+            <img src={property_image_urls[imageIndex]} alt="Property" className="max-w-full max-h-full object-contain rounded shadow-2xl" />
           </div>
         )}
 

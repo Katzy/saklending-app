@@ -112,8 +112,11 @@ export default function LoanDetailPage() {
   const [deadModal, setDeadModal] = useState(false)
   const [deadReason, setDeadReason] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
-  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [imageUrls, setImageUrls] = useState<string[]>([])
+  const [imagePaths, setImagePaths] = useState<string[]>([])
+  const [imageIndex, setImageIndex] = useState(0)
   const [imageLightbox, setImageLightbox] = useState(false)
+  const [imageDeleting, setImageDeleting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Bank links
@@ -186,10 +189,10 @@ export default function LoanDetailPage() {
     setLoan(data)
     setDraft(data)
     setLoading(false)
-    // If there's a showcase image, fetch signed URL
-    if (data.property_image_path) {
+    // Fetch signed URLs for all property images
+    if (data.property_image_path || data.property_image_paths?.length) {
       const imgRes = await fetch(`/api/loans/${id}/image-url`)
-      if (imgRes.ok) { const j = await imgRes.json(); setImageUrl(j.url) }
+      if (imgRes.ok) { const j = await imgRes.json(); setImageUrls(j.urls ?? []); setImagePaths(j.paths ?? []); setImageIndex(0) }
     }
   }, [id, router])
 
@@ -344,18 +347,41 @@ export default function LoanDetailPage() {
   async function uploadImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    e.target.value = ''
     setImageUploading(true)
     const fd = new FormData()
     fd.append('file', file)
     const res = await fetch(`/api/loans/${id}/image`, { method: 'POST', body: fd })
     if (res.ok) {
       const imgRes = await fetch(`/api/loans/${id}/image-url`)
-      if (imgRes.ok) { const j = await imgRes.json(); setImageUrl(j.url) }
+      if (imgRes.ok) {
+        const j = await imgRes.json()
+        setImageUrls(j.urls ?? [])
+        setImagePaths(j.paths ?? [])
+        setImageIndex((j.urls?.length ?? 1) - 1) // jump to the newly added image
+      }
     } else {
       const j = await res.json()
       setSaveError(j.error ?? 'Image upload failed')
     }
     setImageUploading(false)
+  }
+
+  async function deleteImage(path: string) {
+    setImageDeleting(true)
+    await fetch(`/api/loans/${id}/image`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    })
+    const imgRes = await fetch(`/api/loans/${id}/image-url`)
+    if (imgRes.ok) {
+      const j = await imgRes.json()
+      setImageUrls(j.urls ?? [])
+      setImagePaths(j.paths ?? [])
+      setImageIndex(0)
+    }
+    setImageDeleting(false)
   }
 
   async function toggleHomepage(val: boolean) {
@@ -660,37 +686,73 @@ export default function LoanDetailPage() {
         </div>
       </div>
 
-      {/* ── Property image ── */}
-      {(imageUrl || loan.address_street) && (
+      {/* ── Property image carousel ── */}
+      {(imageUrls.length > 0 || loan.address_street) && (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-4">
-          <div className="relative group cursor-zoom-in" onClick={() => setImageLightbox(true)}>
-            {imageUrl ? (
-              <Image src={imageUrl} alt="Property" width={900} height={300} className="w-full object-cover h-52" />
-            ) : (
-              <StreetView
-                street={loan.address_street}
-                city={loan.address_city}
-                state={loan.address_state}
-                zip={loan.address_zip}
-                width={900}
-                height={300}
-                className="w-full object-cover h-52"
-              />
-            )}
-            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all flex items-center justify-center">
-              <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 bg-black bg-opacity-50 px-2 py-1 rounded transition-all">
-                Click to expand
-              </span>
+          <div className="relative group">
+            {/* Main image */}
+            <div className="cursor-zoom-in" onClick={() => imageUrls.length > 0 && setImageLightbox(true)}>
+              {imageUrls.length > 0 ? (
+                <Image src={imageUrls[imageIndex]} alt="Property" width={900} height={300} className="w-full object-cover h-52" />
+              ) : (
+                <StreetView
+                  street={loan.address_street}
+                  city={loan.address_city}
+                  state={loan.address_state}
+                  zip={loan.address_zip}
+                  width={900}
+                  height={300}
+                  className="w-full object-cover h-52"
+                />
+              )}
+              {imageUrls.length > 0 && (
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all flex items-center justify-center pointer-events-none">
+                  <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 bg-black bg-opacity-50 px-2 py-1 rounded transition-all">
+                    Click to expand
+                  </span>
+                </div>
+              )}
             </div>
+            {/* Carousel arrows */}
+            {imageUrls.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setImageIndex((i) => (i - 1 + imageUrls.length) % imageUrls.length) }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-40 hover:bg-opacity-60 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm"
+                >
+                  ‹
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setImageIndex((i) => (i + 1) % imageUrls.length) }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-40 hover:bg-opacity-60 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm"
+                >
+                  ›
+                </button>
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black bg-opacity-40 text-white text-xs px-2 py-0.5 rounded-full">
+                  {imageIndex + 1} / {imageUrls.length}
+                </div>
+              </>
+            )}
           </div>
           <div className="px-4 py-2 flex items-center justify-between border-t border-gray-100">
-            <p className="text-xs text-gray-400">{imageUrl ? 'Uploaded photo' : 'Google Street View'}</p>
+            <p className="text-xs text-gray-400">
+              {imageUrls.length > 0 ? `Photo ${imageIndex + 1} of ${imageUrls.length}` : 'Google Street View'}
+            </p>
             <div className="flex items-center gap-3">
               <input ref={fileRef} type="file" accept="image/*" onChange={uploadImage} className="hidden" />
               <button onClick={() => fileRef.current?.click()} disabled={imageUploading}
                 className="text-xs text-[#003087] hover:underline disabled:opacity-50">
-                {imageUploading ? 'Uploading...' : imageUrl ? 'Replace photo' : 'Upload photo'}
+                {imageUploading ? 'Uploading...' : '+ Add photo'}
               </button>
+              {imageUrls.length > 0 && imagePaths[imageIndex] && (
+                <button
+                  onClick={() => deleteImage(imagePaths[imageIndex])}
+                  disabled={imageDeleting}
+                  className="text-xs text-red-500 hover:underline disabled:opacity-50"
+                >
+                  {imageDeleting ? 'Removing...' : 'Remove this photo'}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -876,9 +938,9 @@ export default function LoanDetailPage() {
                 {imageUploading ? 'Uploading...' : loan.property_image_path ? 'Replace Photo' : 'Upload Photo'}
               </button>
             </div>
-            {imageUrl && (
+            {imageUrls[0] && (
               <div className="w-40 h-28 relative rounded overflow-hidden border border-gray-200 flex-shrink-0">
-                <Image src={imageUrl} alt="Property" fill className="object-cover" unoptimized />
+                <Image src={imageUrls[0]} alt="Property" fill className="object-cover" unoptimized />
               </div>
             )}
           </div>
@@ -1597,12 +1659,12 @@ if (val.trim().length > 0) {
       )}
 
       {/* Image lightbox */}
-      {imageLightbox && imageUrl && (
+      {imageLightbox && imageUrls[imageIndex] && (
         <div
           className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 cursor-zoom-out p-4"
           onClick={() => setImageLightbox(false)}
         >
-          <img src={imageUrl} alt="Property" className="max-w-full max-h-full object-contain rounded shadow-2xl" />
+          <img src={imageUrls[imageIndex]} alt="Property" className="max-w-full max-h-full object-contain rounded shadow-2xl" />
         </div>
       )}
 

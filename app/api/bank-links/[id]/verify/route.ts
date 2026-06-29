@@ -54,14 +54,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     })
   )
 
-  // Generate signed URL for property image if present
-  let property_image_url: string | null = null
-  if (loan.property_image_path) {
-    const { data: imgSigned } = await supabase.storage
-      .from('loan-documents')
-      .createSignedUrl(loan.property_image_path, 60 * 60 * 4)
-    property_image_url = imgSigned?.signedUrl ?? null
-  }
+  // Generate signed URLs for all property images
+  const imgPaths: string[] = (loan.property_image_paths ?? []).length > 0
+    ? loan.property_image_paths
+    : loan.property_image_path ? [loan.property_image_path] : []
+  const imgSigned = await Promise.all(
+    imgPaths.map((p: string) => supabase.storage.from('loan-documents').createSignedUrl(p, 60 * 60 * 4))
+  )
+  const property_image_urls = imgSigned.map((r) => r.data?.signedUrl ?? null).filter(Boolean) as string[]
+  const property_image_url = property_image_urls[0] ?? null
 
   // Fetch this lender's own uploads
   const { data: lenderDocs } = await supabase
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     contact,
     documents: docs,
     property_image_url,
+    property_image_urls,
     decision: link.decision ?? null,
     my_uploads: myUploads,
     bank_link_id: link.id,
