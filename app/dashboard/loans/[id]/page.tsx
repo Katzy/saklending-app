@@ -113,6 +113,7 @@ export default function LoanDetailPage() {
   const [deadReason, setDeadReason] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [imageLightbox, setImageLightbox] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Bank links
@@ -662,19 +663,26 @@ export default function LoanDetailPage() {
       {/* ── Property image ── */}
       {(imageUrl || loan.address_street) && (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-4">
-          {imageUrl ? (
-            <Image src={imageUrl} alt="Property" width={900} height={300} className="w-full object-cover h-52" />
-          ) : (
-            <StreetView
-              street={loan.address_street}
-              city={loan.address_city}
-              state={loan.address_state}
-              zip={loan.address_zip}
-              width={900}
-              height={300}
-              className="w-full object-cover h-52"
-            />
-          )}
+          <div className="relative group cursor-zoom-in" onClick={() => setImageLightbox(true)}>
+            {imageUrl ? (
+              <Image src={imageUrl} alt="Property" width={900} height={300} className="w-full object-cover h-52" />
+            ) : (
+              <StreetView
+                street={loan.address_street}
+                city={loan.address_city}
+                state={loan.address_state}
+                zip={loan.address_zip}
+                width={900}
+                height={300}
+                className="w-full object-cover h-52"
+              />
+            )}
+            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all flex items-center justify-center">
+              <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 bg-black bg-opacity-50 px-2 py-1 rounded transition-all">
+                Click to expand
+              </span>
+            </div>
+          </div>
           <div className="px-4 py-2 flex items-center justify-between border-t border-gray-100">
             <p className="text-xs text-gray-400">{imageUrl ? 'Uploaded photo' : 'Google Street View'}</p>
             <div className="flex items-center gap-3">
@@ -1585,6 +1593,16 @@ if (val.trim().length > 0) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Image lightbox */}
+      {imageLightbox && imageUrl && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 cursor-zoom-out p-4"
+          onClick={() => setImageLightbox(false)}
+        >
+          <img src={imageUrl} alt="Property" className="max-w-full max-h-full object-contain rounded shadow-2xl" />
         </div>
       )}
 
