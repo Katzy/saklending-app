@@ -94,7 +94,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const propertyLabel = loan.address_city
       ? `${loan.address_street ?? ''} ${loan.address_city}, ${loan.address_state ?? ''}`.trim()
       : loan.property_type ?? 'Unknown property'
-    transporter.sendMail({
+    await transporter.sendMail({
       from: '"SAK Lending" <support@saklending.com>',
       to: 'scott@saklending.com',
       subject: `👀 ${lenderLabel} viewed loan package — ${propertyLabel}`,
