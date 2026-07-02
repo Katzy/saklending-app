@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import bcrypt from 'bcryptjs'
+import nodemailer from 'nodemailer'
+
+const transporter = nodemailer.createTransport({
+  host: 'smtp.resend.com',
+  port: 465,
+  secure: true,
+  auth: { user: 'resend', pass: process.env.RESEND_API_KEY },
+})
 
 // POST /api/bank-links/[id]/verify  (params.id holds the token value)
 // Verifies password and returns full loan package on success
@@ -13,7 +21,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // Find the link by token
   const { data: link, error: linkError } = await supabase
     .from('bank_share_links')
-    .select('id, loan_id, password_hash, expires_at, revoked_at, decision')
+    .select('id, loan_id, password_hash, expires_at, revoked_at, decision, label')
     .eq('token', params.id)
     .single()
 
@@ -79,6 +87,28 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return { ...doc, url: signed?.signedUrl ?? null }
     })
   )
+
+  // Notify admin that a bank viewed this loan package
+  if (process.env.RESEND_API_KEY) {
+    const lenderLabel = link.label ?? 'A lender'
+    const propertyLabel = loan.address_city
+      ? `${loan.address_street ?? ''} ${loan.address_city}, ${loan.address_state ?? ''}`.trim()
+      : loan.property_type ?? 'Unknown property'
+    transporter.sendMail({
+      from: '"SAK Lending" <support@saklending.com>',
+      to: 'scott@saklending.com',
+      subject: `👀 ${lenderLabel} viewed loan package — ${propertyLabel}`,
+      text: [
+        `${lenderLabel} just logged in to view the loan package.`,
+        ``,
+        `Property: ${propertyLabel}`,
+        loan.loan_amount ? `Loan Amount: $${Number(loan.loan_amount).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : null,
+        `Time: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET`,
+        ``,
+        `Log in to your dashboard to follow up.`,
+      ].filter(Boolean).join('\n'),
+    }).catch(() => {})
+  }
 
   return NextResponse.json({
     loan,
