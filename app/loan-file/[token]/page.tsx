@@ -306,7 +306,7 @@ export default function BankPortalPage() {
             <div className="relative group">
               <div className="cursor-zoom-in" onClick={() => property_image_urls.length > 0 && setImageLightbox(true)}>
                 {property_image_urls.length > 0 ? (
-                  <Image src={property_image_urls[imageIndex]} alt="Property" width={900} height={400} className="w-full object-cover max-h-72" unoptimized />
+                  <Image src={property_image_urls[imageIndex]} alt="Property" width={900} height={600} className="w-full object-contain max-h-96" unoptimized />
                 ) : (
                   <StreetView street={loan.address_street} city={loan.address_city} state={loan.address_state} zip={loan.address_zip} width={900} height={400} className="w-full object-cover max-h-72" />
                 )}

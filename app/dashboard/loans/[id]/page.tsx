@@ -693,7 +693,7 @@ export default function LoanDetailPage() {
             {/* Main image */}
             <div className="cursor-zoom-in" onClick={() => imageUrls.length > 0 && setImageLightbox(true)}>
               {imageUrls.length > 0 ? (
-                <Image src={imageUrls[imageIndex]} alt="Property" width={900} height={300} className="w-full object-cover h-52" />
+                <Image src={imageUrls[imageIndex]} alt="Property" width={900} height={600} className="w-full object-contain max-h-96" />
               ) : (
                 <StreetView
                   street={loan.address_street}
