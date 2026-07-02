@@ -136,6 +136,7 @@ export default function LoanDetailPage() {
   const [notifyNote, setNotifyNote] = useState('')
   const [notifySending, setNotifySending] = useState(false)
   const [notifySent, setNotifySent] = useState(false)
+  const [notifyError, setNotifyError] = useState<string | null>(null)
   const [showLinkForm, setShowLinkForm] = useState(false)
   const [linkLabel, setLinkLabel] = useState('')
   const [linkPassword, setLinkPassword] = useState('')
@@ -490,20 +491,30 @@ export default function LoanDetailPage() {
   async function sendNotification() {
     if (!notifyLink || !notifyEmail || !notifyDocIds.size) return
     setNotifySending(true)
-    await fetch(`/api/bank-links/${notifyLink.id}/notify-docs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        recipient_email: notifyEmail,
-        recipient_name: notifyName,
-        doc_ids: Array.from(notifyDocIds),
-        note: notifyNote || undefined,
-        app_url: window.location.origin,
-      }),
-    })
-    setNotifySending(false)
-    setNotifySent(true)
-    setTimeout(() => setNotifyLink(null), 1500)
+    setNotifyError(null)
+    try {
+      const res = await fetch(`/api/bank-links/${notifyLink.id}/notify-docs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipient_email: notifyEmail,
+          recipient_name: notifyName,
+          doc_ids: Array.from(notifyDocIds),
+          note: notifyNote || undefined,
+        }),
+      })
+      const j = await res.json()
+      if (!res.ok) {
+        setNotifyError(j.error ?? 'Failed to send notification')
+      } else {
+        setNotifySent(true)
+        setTimeout(() => { setNotifyLink(null); setNotifySent(false); setNotifyError(null) }, 1500)
+      }
+    } catch {
+      setNotifyError('Network error — please try again')
+    } finally {
+      setNotifySending(false)
+    }
   }
 
   async function toggleSelected(linkId: string, currentlySelected: boolean) {
@@ -1634,9 +1645,8 @@ if (val.trim().length > 0) {
                 />
               </div>
 
-              {notifySent && (
-                <p className="text-sm text-green-600 font-medium">Notification sent successfully!</p>
-              )}
+              {notifySent && <p className="text-sm text-green-600 font-medium">Notification sent successfully!</p>}
+              {notifyError && <p className="text-sm text-red-600">{notifyError}</p>}
             </div>
 
             <div className="flex gap-3 justify-end mt-4 pt-4 border-t border-gray-100">
